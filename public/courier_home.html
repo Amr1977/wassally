@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>الصفحة الرئيسية للمندوب</title>
+  <meta charset="UTF-8" />
+</head>
+<body>
+  <h2>مرحبًا بك أيها المندوب</h2>
+  <p>تابع العروض الجديدة وابدأ التقديم على الطلبات المناسبة.</p>
+
+  <button onclick="logout()">تسجيل الخروج</button>
+
+  <script>
+    function logout() {
+      localStorage.clear();
+      window.location.href = "signin.html";
+    }
+  </script>
+</body>
+</html>

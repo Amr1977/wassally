@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>الصفحة الرئيسية للعميل</title>
+  <meta charset="UTF-8" />
+</head>
+<body>
+  <h2>مرحبًا بك عميلنا العزيز</h2>
+  <p>يمكنك الآن نشر طلبات جديدة واستقبال عروض من المناديب.</p>
+
+  <button onclick="logout()">تسجيل الخروج</button>
+
+  <script>
+    function logout() {
+      localStorage.clear();
+      window.location.href = "signin.html";
+    }
+  </script>
+</body>
+</html>
