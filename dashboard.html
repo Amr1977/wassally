@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>لوحة التحكم</title>
+  <meta charset="UTF-8" />
+</head>
+<body>
+  <h1>لوحة التحكم</h1>
+  <p id="welcome"></p>
+  <button onclick="logout()">تسجيل الخروج</button>
+
+  <script>
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (user) {
+      document.getElementById("welcome").innerText = "مرحباً، " + user.name;
+    } else {
+      window.location.href = "signin.html";
+    }
+
+    function logout() {
+      localStorage.removeItem("user");
+      window.location.href = "signin.html";
+    }
+  </script>
+</body>
+</html>
