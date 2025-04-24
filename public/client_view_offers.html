@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>مراجعة العروض</title>
+    <meta charset="UTF-8" />
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+</head>
+
+<body>
+    <h2>العروض المقدمة على طلباتك</h2>
+    <div id="offersContainer">جاري التحميل...</div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBXyTzYT_kjwcibZo3zXQrhOdPyUksodig",
+            authDomain: "wassally25.firebaseapp.com",
+            databaseURL: "https://wassally25-default-rtdb.firebaseio.com",
+            projectId: "wassally25",
+            storageBucket: "wassally25.firebasestorage.app",
+            messagingSenderId: "673929758317",
+            appId: "1:673929758317:web:de4fe369507fb58d492164"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const clientId = localStorage.getItem("userId");
+        const offersContainer = document.getElementById("offersContainer");
+
+        function loadClientJobsAndOffers() {
+            db.ref("jobs").orderByChild("clientId").equalTo(clientId).once("value", snapshot => {
+                offersContainer.innerHTML = "";
+                if (!snapshot.exists()) {
+                    offersContainer.innerHTML = "<p>لا توجد طلبات حالياً.</p>";
+                    return;
+                }
+
+                snapshot.forEach(jobSnap => {
+                    const job = jobSnap.val();
+                    const jobId = jobSnap.key;
+
+                    const jobDiv = document.createElement("div");
+                    jobDiv.style.border = "1px solid #ccc";
+                    jobDiv.style.margin = "10px";
+                    jobDiv.style.padding = "10px";
+
+                    jobDiv.innerHTML = `<h3>${job.title}</h3><p>${job.details}</p><div id="offers_${jobId}">تحميل العروض...</div>`;
+                    offersContainer.appendChild(jobDiv);
+
+                    loadOffersForJob(jobId);
+                });
+            });
+        }
+
+        function loadOffersForJob(jobId) {
+            const offersDiv = document.getElementById(`offers_${jobId}`);
+            db.ref(`offers/${jobId}`).once("value", snapshot => {
+                offersDiv.innerHTML = "";
+                if (!snapshot.exists()) {
+                    offersDiv.innerHTML = "<p>لا يوجد عروض حتى الآن.</p>";
+                    return;
+                }
+
+                snapshot.forEach(offerSnap => {
+                    const offer = offerSnap.val();
+                    const offerId = offerSnap.key;
+
+                    const offerEl = document.createElement("div");
+                    offerEl.style.borderTop = "1px dashed #aaa";
+                    offerEl.style.marginTop = "5px";
+                    offerEl.innerHTML = `
+                                                                                                                                                                                                                                                                                                                                                                                                      <p>معرف المندوب: ${offer.courierId}</p>
+                                                                                                                                                                                                                                                                                                                                                                                                                  <p>تاريخ العرض: ${new Date(offer.offeredAt).toLocaleString()}</p>
+                                                                                                                                                                                                                                                                                                                                                                                                                              <p>الحالة: ${offer.status}</p>
+                                                                                                                                                                                                                                                                                                                                                                                                                                          ${offer.status === "pending" ? `<button onclick="acceptOffer('${jobId}', '${offerId}', '${offer.courierId}')">قبول العرض</button>` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                    `;
+
+                    offersDiv.appendChild(offerEl);
+                });
+            });
+        }
+
+        function acceptOffer(jobId, offerId, courierId) {
+            // تحديث حالة العرض
+            db.ref(`offers/${jobId}/${offerId}/status`).set("accepted");
+
+            // تحديث حالة الطلب
+            db.ref(`jobs/${jobId}`).update({
+                status: "assigned",
+                courierId: courierId
+            });
+
+            alert("تم قبول العرض بنجاح!");
+            loadClientJobsAndOffers();
+        }
+
+        loadClientJobsAndOffers();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>الطلبات المتاحة</title>
+    <meta charset="UTF-8" />
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+</head>
+
+<body>
+    <h2>الطلبات المتاحة</h2>
+    <div id="jobsList">جاري التحميل...</div>
+
+    <button onclick="logout()">تسجيل الخروج</button>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBXyTzYT_kjwcibZo3zXQrhOdPyUksodig",
+            authDomain: "wassally25.firebaseapp.com",
+            databaseURL: "https://wassally25-default-rtdb.firebaseio.com",
+            projectId: "wassally25",
+            storageBucket: "wassally25.firebasestorage.app",
+            messagingSenderId: "673929758317",
+            appId: "1:673929758317:web:de4fe369507fb58d492164"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const jobsList = document.getElementById("jobsList");
+
+        function loadJobs() {
+            db.ref("jobs").orderByChild("status").equalTo("open").once("value", snapshot => {
+                jobsList.innerHTML = "";
+                if (!snapshot.exists()) {
+                    jobsList.innerHTML = "<p>لا توجد طلبات حاليًا.</p>";
+                    return;
+                }
+
+                snapshot.forEach(jobSnap => {
+                    const job = jobSnap.val();
+                    const jobId = jobSnap.key;
+
+                    const jobDiv = document.createElement("div");
+                    jobDiv.style.border = "1px solid #aaa";
+                    jobDiv.style.padding = "10px";
+                    jobDiv.style.margin = "10px";
+
+                    jobDiv.innerHTML = `
+                                                                                                                                                                                                                              <h3>${job.title}</h3>
+                                                                                                                                                                                                                                          <p>${job.details}</p>
+                                                                                                                                                                                                                                                      <p><strong>الميزانية:</strong> ${job.budget} جنيه</p>
+                                                                                                                                                                                                                                                                  <button onclick="applyOffer('${jobId}')">تقديم عرض</button>
+                                                                                                                                                                                                                                                                            `;
+
+                    jobsList.appendChild(jobDiv);
+                });
+            });
+        }
+
+        function applyOffer(jobId) {
+            const courierId = localStorage.getItem("userId");
+            const offerRef = db.ref(`offers/${jobId}`).push();
+            offerRef.set({
+                courierId,
+                offeredAt: new Date().toISOString(),
+                status: "pending"
+            });
+            alert("تم إرسال العرض بنجاح!");
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = "signin.html";
+        }
+
+        loadJobs();
+    </script>
+</body>
+
+</html>
