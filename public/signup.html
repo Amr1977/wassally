@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>إنشاء حساب</title>
+    <meta charset="UTF-8" />
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+</head>
+
+<body>
+    <h2>إنشاء حساب جديد</h2>
+
+    <form onsubmit="signup(event)">
+        <input type="text" id="name" placeholder="الاسم" required><br>
+        <input type="email" id="email" placeholder="البريد الإلكتروني" required><br>
+        <input type="password" id="password" placeholder="كلمة المرور" required><br>
+        <select id="role">
+            <option value="client">عميل</option>
+            <option value="courier">مندوب</option>
+        </select><br>
+        <button type="submit">تسجيل</button>
+    </form>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBXyTzYT_kjwcibZo3zXQrhOdPyUksodig",
+            authDomain: "wassally25.firebaseapp.com",
+            databaseURL: "https://wassally25-default-rtdb.firebaseio.com",
+            projectId: "wassally25",
+            storageBucket: "wassally25.firebasestorage.app",
+            messagingSenderId: "673929758317",
+            appId: "1:673929758317:web:de4fe369507fb58d492164",
+            measurementId: "G-W5Z57HVDCK"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        function signup(e) {
+            e.preventDefault();
+
+            const name = document.getElementById("name").value;
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            const role = document.getElementById("role").value;
+
+            const userData = {
+                name,
+                email,
+                password,
+                role,
+                verified: false,
+                phoneNumbers: [],
+                wallet: 0,
+                total_spent: role === "client" ? 0 : undefined,
+                total_earned: role === "courier" ? 0 : undefined,
+                budget_available: role === "courier" ? 0 : undefined
+            };
+
+            const userId = db.ref().child("users").push().key;
+
+            db.ref("users/" + userId).set(userData)
+                .then(() => {
+                    alert("تم إنشاء الحساب بنجاح!");
+                    window.location.href = "signin.html";
+                })
+                .catch(err => {
+                    alert("حدث خطأ: " + err.message);
+                });
+        }
+    </script>
+</body>
+
+</html>
