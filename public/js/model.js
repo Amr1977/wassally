@@ -1,5 +1,9 @@
 // model.js
-const firebaseConfig = {
+import { getDatabase, ref, set, push, get, update, child } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+
+// Firebase initialization
+const firebase_config = {
     apiKey: "AIzaSyBXyTzYT_kjwcibZo3zXQrhOdPyUksodig",
     authDomain: "wassally25.firebaseapp.com",
     databaseURL: "https://wassally25-default-rtdb.firebaseio.com",
@@ -10,24 +14,35 @@ const firebaseConfig = {
     measurementId: "G-W5Z57HVDCK"
 };
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+const app = initializeApp(firebase_config);
+const db = getDatabase(app);
+const auth = getAuth(app);
 
-function signupUser(userData) {
-    const userId = db.ref().child("users").push().key;
-    return db.ref("users/" + userId).set(userData);
+// Create user using Firebase Authentication and save to Database
+function createAccount(email, password, userData) {
+    return createUserWithEmailAndPassword(auth, email, password)
+        .then(userCredential => {
+            const user = userCredential.user;
+            const fullUserData = { uid: user.uid, email: user.email, ...userData };
+            const usersRef = ref(db, "users");
+            const newUserRef = push(usersRef);
+            return set(newUserRef, fullUserData);
+        });
 }
 
-function signinUser(email, password) {
-    return firebase.auth().signInWithEmailAndPassword(email, password);
-}
-
+// Save user data to Local Storage
 function saveUserToLocalStorage(user) {
-    localStorage.setItem('user', JSON.stringify(user));
+    localStorage.setItem("user", JSON.stringify(user));
 }
 
+// Get user data from Local Storage
 function getUserFromLocalStorage() {
-    return JSON.parse(localStorage.getItem('user'));
+    return JSON.parse(localStorage.getItem("user"));
 }
 
-export { signupUser, signinUser, saveUserToLocalStorage, getUserFromLocalStorage };
+// Signin user using Firebase Authentication
+function signinUser(email, password) {
+    return signInWithEmailAndPassword(auth, email, password);
+}
+
+export { db, createAccount, signinUser, saveUserToLocalStorage, getUserFromLocalStorage };
