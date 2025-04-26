@@ -1,3 +1,4 @@
+<!-- client_post_job.html -->
 <!DOCTYPE html>
 <html>
 
@@ -10,16 +11,13 @@
 
 <body>
     <h2>نشر طلب جديد</h2>
-
     <form onsubmit="postJob(event)">
         <input type="text" id="title" placeholder="عنوان الطلب" required><br><br>
         <textarea id="details" placeholder="وصف الطلب" required></textarea><br><br>
         <input type="number" id="budget" placeholder="الميزانية بالجنيه" required><br><br>
         <button type="submit">نشر الطلب</button>
     </form>
-
     <button onclick="logout()">تسجيل الخروج</button>
-
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyBXyTzYT_kjwcibZo3zXQrhOdPyUksodig",
@@ -31,18 +29,14 @@
             appId: "1:673929758317:web:de4fe369507fb58d492164",
             measurementId: "G-W5Z57HVDCK"
         };
-
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-
         function postJob(e) {
             e.preventDefault();
-
             const title = document.getElementById("title").value;
             const details = document.getElementById("details").value;
             const budget = document.getElementById("budget").value;
             const clientId = localStorage.getItem("userId");
-
             const newJobRef = db.ref("jobs").push();
             newJobRef.set({
                 title,
@@ -52,11 +46,9 @@
                 status: "open",
                 createdAt: new Date().toISOString()
             });
-
             alert("تم نشر الطلب بنجاح!");
             document.querySelector("form").reset();
         }
-
         function logout() {
             localStorage.clear();
             window.location.href = "signin.html";

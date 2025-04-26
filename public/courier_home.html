@@ -1,21 +1,31 @@
+<!-- courier_home.html -->
 <!DOCTYPE html>
 <html>
-
 <head>
   <title>الصفحة الرئيسية للمندوب</title>
   <meta charset="UTF-8" />
 </head>
-
 <body>
   <h2>مرحبًا بك أيها المندوب</h2>
   <p>تابع العروض الجديدة وابدأ التقديم على الطلبات المناسبة.</p>
-
   <button onclick="logout()">تسجيل الخروج</button>
-
   <script>
+    // Assuming the courier is logged in using Firebase
     function logout() {
       localStorage.clear();
-      window.location.href = "signin.html";
+      window.location.href = "signin.html";  // Log out and redirect to sign-in page
+    }
+
+    // If the courier is logged in successfully, redirect them to the offers page
+    window.onload = function() {
+      // Assuming a session check or a similar login check
+      const courierLoggedIn = localStorage.getItem("courierId");  // Check if courier is logged in
+
+      if (courierLoggedIn) {
+        window.location.href = "courier_view_jobs.html";  // Redirect to the view offers page if logged in
+      } else {
+        console.log("Courier not logged in.");
+      }
     }
   </script>
   <h1>Navigation</h1>
@@ -30,10 +40,7 @@
     <li><a href="signin.html">Sign In</a></li>
     <li><a href="signup.html">Sign Up</a></li>
   </ul>
-
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
   <script>eruda.init();</script>
-
 </body>
-
 </html>

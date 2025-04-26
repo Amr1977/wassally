@@ -1,6 +1,7 @@
 // model.js
 import { getDatabase, ref, set, push, get, update, child } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 
 // Firebase initialization
 const firebase_config = {
@@ -24,9 +25,11 @@ function createAccount(email, password, userData) {
         .then(userCredential => {
             const user = userCredential.user;
             const fullUserData = { uid: user.uid, email: user.email, ...userData };
-            const usersRef = ref(db, "users");
-            const newUserRef = push(usersRef);
-            return set(newUserRef, fullUserData);
+            const userRef = ref(db, 'users/' + user.uid);  // Save user under their UID
+            return set(userRef, fullUserData);
+        })
+        .catch(err => {
+            throw new Error("Error creating account: " + err.message);
         });
 }
 
@@ -42,7 +45,13 @@ function getUserFromLocalStorage() {
 
 // Signin user using Firebase Authentication
 function signinUser(email, password) {
-    return signInWithEmailAndPassword(auth, email, password);
+    return signInWithEmailAndPassword(auth, email, password)
+        .then(userCredential => {
+            return userCredential.user;
+        })
+        .catch(err => {
+            throw new Error("Error signing in: " + err.message);
+        });
 }
 
 export { db, createAccount, signinUser, saveUserToLocalStorage, getUserFromLocalStorage };

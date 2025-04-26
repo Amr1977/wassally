@@ -6,19 +6,16 @@ import {
     getUserFromLocalStorage,
     db
 } from './model.js';
-
 import {
     showAlert,
     redirectToPage,
     getFormData
 } from './view.js';
-
 import {
     get,
     ref,
     child
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
-
 import {
     createUserWithEmailAndPassword,
     getAuth
@@ -60,17 +57,12 @@ function signin(e) {
     signinUser(email, password)
         .then(userCredential => {
             const user = userCredential.user;
-            return get(child(ref(db), "users"));
+            const userRef = ref(db, 'users/' + user.uid);
+            return get(userRef);
         })
         .then(snapshot => {
-            let userData = null;
-            snapshot.forEach(childSnapshot => {
-                const value = childSnapshot.val();
-                if (value.email === email) {
-                    userData = value;
-                }
-            });
-            if (userData) {
+            if (snapshot.exists()) {
+                const userData = snapshot.val();
                 saveUserToLocalStorage(userData);
                 showAlert("تم تسجيل الدخول بنجاح!");
                 redirectToPage("dashboard.html");

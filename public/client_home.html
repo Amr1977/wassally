@@ -1,12 +1,33 @@
+<!-- client_home.html -->
 <!DOCTYPE html>
 <html>
-
 <head>
   <title>الصفحة الرئيسية للعميل</title>
   <meta charset="UTF-8" />
 </head>
-
 <body>
+  <h2>مرحبًا بك عميلنا العزيز</h2>
+  <p>يمكنك الآن نشر طلبات جديدة واستقبال عروض من المناديب.</p>
+  <button onclick="logout()">تسجيل الخروج</button>
+  <script>
+    // Assuming the client is logged in using Firebase
+    function logout() {
+      localStorage.clear();
+      window.location.href = "signin.html";  // Log out and redirect to sign-in page
+    }
+
+    // If the client is logged in successfully, redirect them to the post job page
+    window.onload = function() {
+      // Assuming a session check or a similar login check
+      const clientLoggedIn = localStorage.getItem("clientId");  // Check if client is logged in
+
+      if (clientLoggedIn) {
+        window.location.href = "client_post_job.html";  // Redirect to the post job page if logged in
+      } else {
+        console.log("Client not logged in.");
+      }
+    }
+  </script>
   <h1>Navigation</h1>
   <ul>
     <li><a href="404.html">404 Page</a></li>
@@ -19,19 +40,7 @@
     <li><a href="signin.html">Sign In</a></li>
     <li><a href="signup.html">Sign Up</a></li>
   </ul>
-  <h2>مرحبًا بك عميلنا العزيز</h2>
-  <p>يمكنك الآن نشر طلبات جديدة واستقبال عروض من المناديب.</p>
-
-  <button onclick="logout()">تسجيل الخروج</button>
-
-  <script>
-    function logout() {
-      localStorage.clear();
-      window.location.href = "signin.html";
-    }
-  </script>
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
   <script>eruda.init();</script>
 </body>
-
 </html>
