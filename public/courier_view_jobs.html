@@ -1,17 +1,26 @@
 <!-- courier_view_jobs.html -->
 <!DOCTYPE html>
-<html>
+<html lang="ar">
 <head>
-    <title>عرض الوظائف للمندوب</title>
-    <meta charset="UTF-8" />
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <script type="module" src="../js/courier_view_jobs_controller.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="styles/styles.css">
+
+  <title>صفحة المندوب</title>
 </head>
 <body>
-    <h2>عرض الوظائف المتاحة للمندوبين</h2>
-    <div id="jobs_list"></div>
+  <h1>المهام المتاحة</h1>
+
+  <div id="jobs-list">
+    تحميل المهام...
+  </div>
+
+  <a href="signin.html">تسجيل الخروج</a>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>eruda.init();</script>
+  <script type="module" src="./js/courier_view_jobs_controller.js"></script>
 </body>
-<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-<script>eruda.init();</script>
 </html>

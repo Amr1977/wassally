@@ -1,46 +1,25 @@
 <!-- client_home.html -->
 <!DOCTYPE html>
-<html>
+<html lang="ar">
 <head>
-  <title>الصفحة الرئيسية للعميل</title>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="styles/styles.css">
+
+  <title>صفحة العميل</title>
 </head>
 <body>
-  <h2>مرحبًا بك عميلنا العزيز</h2>
-  <p>يمكنك الآن نشر طلبات جديدة واستقبال عروض من المناديب.</p>
-  <button onclick="logout()">تسجيل الخروج</button>
-  <script>
-    // Assuming the client is logged in using Firebase
-    function logout() {
-      localStorage.clear();
-      window.location.href = "signin.html";  // Log out and redirect to sign-in page
-    }
+  <h1>أهلاً بك أيها العميل</h1>
 
-    // If the client is logged in successfully, redirect them to the post job page
-    window.onload = function() {
-      // Assuming a session check or a similar login check
-      const clientLoggedIn = localStorage.getItem("clientId");  // Check if client is logged in
+  <form id="post-job-form">
+    <input type="text" id="title" placeholder="عنوان المهمة" required><br>
+    <textarea id="description" placeholder="وصف المهمة" required></textarea><br>
+    <input type="number" id="budget" placeholder="الميزانية" required><br>
+    <button type="submit">نشر المهمة</button>
+  </form>
 
-      if (clientLoggedIn) {
-        window.location.href = "client_post_job.html";  // Redirect to the post job page if logged in
-      } else {
-        console.log("Client not logged in.");
-      }
-    }
-  </script>
-  <h1>Navigation</h1>
-  <ul>
-    <li><a href="404.html">404 Page</a></li>
-    <li><a href="client_home.html">Client Home</a></li>
-    <li><a href="client_post_job.html">Client Post Job</a></li>
-    <li><a href="client_view_offers.html">Client View Offers</a></li>
-    <li><a href="courier_home.html">Courier Home</a></li>
-    <li><a href="courier_view_jobs.html">Courier View Jobs</a></li>
-    <li><a href="index.html">Index</a></li>
-    <li><a href="signin.html">Sign In</a></li>
-    <li><a href="signup.html">Sign Up</a></li>
-  </ul>
-  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-  <script>eruda.init();</script>
+  <a href="signin.html">تسجيل الخروج</a>
+
+  <script type="module" src="./js/client_home_controller.js"></script>
 </body>
 </html>

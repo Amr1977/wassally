@@ -5,13 +5,17 @@
 <head>
     <title>نشر طلب جديد</title>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles/styles.css">
+  
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-</head>
+    </head>
 
 <body>
     <h2>نشر طلب جديد</h2>
-    <form onsubmit="postJob(event)">
+    <form id="post-job-form">
         <input type="text" id="title" placeholder="عنوان الطلب" required><br><br>
         <textarea id="details" placeholder="وصف الطلب" required></textarea><br><br>
         <input type="number" id="budget" placeholder="الميزانية بالجنيه" required><br><br>
@@ -19,53 +23,13 @@
     </form>
     <button onclick="logout()">تسجيل الخروج</button>
     <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyBXyTzYT_kjwcibZo3zXQrhOdPyUksodig",
-            authDomain: "wassally25.firebaseapp.com",
-            databaseURL: "https://wassally25-default-rtdb.firebaseio.com",
-            projectId: "wassally25",
-            storageBucket: "wassally25.firebasestorage.app",
-            messagingSenderId: "673929758317",
-            appId: "1:673929758317:web:de4fe369507fb58d492164",
-            measurementId: "G-W5Z57HVDCK"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-        function postJob(e) {
-            e.preventDefault();
-            const title = document.getElementById("title").value;
-            const details = document.getElementById("details").value;
-            const budget = document.getElementById("budget").value;
-            const clientId = localStorage.getItem("userId");
-            const newJobRef = db.ref("jobs").push();
-            newJobRef.set({
-                title,
-                details,
-                budget,
-                clientId,
-                status: "open",
-                createdAt: new Date().toISOString()
-            });
-            alert("تم نشر الطلب بنجاح!");
-            document.querySelector("form").reset();
-        }
+    
         function logout() {
             localStorage.clear();
             window.location.href = "signin.html";
         }
     </script>
-    <h1>Navigation</h1>
-    <ul>
-        <li><a href="404.html">404 Page</a></li>
-        <li><a href="client_home.html">Client Home</a></li>
-        <li><a href="client_post_job.html">Client Post Job</a></li>
-        <li><a href="client_view_offers.html">Client View Offers</a></li>
-        <li><a href="courier_home.html">Courier Home</a></li>
-        <li><a href="courier_view_jobs.html">Courier View Jobs</a></li>
-        <li><a href="index.html">Index</a></li>
-        <li><a href="signin.html">Sign In</a></li>
-        <li><a href="signup.html">Sign Up</a></li>
-    </ul>
+    <script type="module" src="./js/client_post_job_controller.js?v=3"></script>
     <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
     <script>eruda.init();</script>
 </body>

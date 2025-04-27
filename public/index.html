@@ -4,38 +4,15 @@
 
 <head>
   <title>Firebase Test</title>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="styles/styles.css">
+
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 </head>
 
 <body>
-  <h1>Firebase Test</h1>
-  <button onclick="writeData()">Send Data</button>
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBXyTzYT_kjwcibZo3zXQrhOdPyUksodig",
-      authDomain: "wassally25.firebaseapp.com",
-      databaseURL: "https://wassally25-default-rtdb.firebaseio.com",
-      projectId: "wassally25",
-      storageBucket: "wassally25.firebasestorage.app",
-      messagingSenderId: "673929758317",
-      appId: "1:673929758317:web:de4fe369507fb58d492164",
-      measurementId: "G-W5Z57HVDCK"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
-    function writeData() {
-      console.log("Button clicked");
-      database.ref('test').set({
-        message: "Hello from mobile!"
-      }).then(() => {
-        console.log("Data written successfully");
-      }).catch((error) => {
-        console.error("Error writing data:", error);
-      });
-    }
-  </script>
-  <!-- Eruda console (for mobile) -->
   <h1>Navigation</h1>
   <ul>
     <li><a href="404.html">404 Page</a></li>

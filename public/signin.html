@@ -1,22 +1,27 @@
 <!-- signin.html -->
 <!DOCTYPE html>
 <html lang="ar">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="styles/styles.css">
   <title>تسجيل الدخول</title>
-  <script type="module" src="js/controller.js"></script>
 </head>
-
 <body>
-  <form id="signin-form" onsubmit="signin(event)">
+  <h1>تسجيل الدخول</h1>
+
+  <form id="signin-form">
     <input type="email" id="email" placeholder="البريد الإلكتروني" required><br>
     <input type="password" id="password" placeholder="كلمة المرور" required><br>
     <button type="submit">دخول</button>
   </form>
+
+  <p>ليس لديك حساب؟ <a href="signup.html">إنشاء حساب</a></p>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
   <script>eruda.init();</script>
+  <script type="module" src="./js/signin_controller.js"></script>
 </body>
-
 </html>

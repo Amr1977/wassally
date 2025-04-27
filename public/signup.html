@@ -1,27 +1,33 @@
-<!-- signup.html -->
 <!DOCTYPE html>
 <html lang="ar">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>إنشاء حساب</title>
-    <script type="module" src="js/controller.js?v=1"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="styles/styles.css">
+
+  <title>إنشاء حساب</title>
 </head>
-
 <body>
-    <form id="signup-form" onsubmit="signup(event)">
-        <input type="text" id="name" placeholder="الاسم" required><br>
-        <input type="email" id="email" placeholder="البريد الإلكتروني" required><br>
-        <input type="password" id="password" placeholder="كلمة المرور" required><br>
-        <select id="role">
-            <option value="client">عميل</option>
-            <option value="courier">مندوب</option>
-        </select><br>
-        <button type="submit">تسجيل</button>
-    </form>
-    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-    <script>eruda.init();</script>
-</body>
+  <h1>إنشاء حساب جديد</h1>
 
+  <form id="signup-form">
+    <input type="text" id="username" placeholder="اسم المستخدم" required><br>
+    <input type="email" id="email" placeholder="البريد الإلكتروني" required><br>
+    <input type="password" id="password" placeholder="كلمة المرور" required><br>
+    <select id="role" required>
+      <option value="">اختر الدور</option>
+      <option value="client">عميل</option>
+      <option value="courier">مندوب</option>
+    </select><br>
+    <button type="submit">تسجيل</button>
+  </form>
+
+  <p>لديك حساب بالفعل؟ <a href="signin.html">تسجيل الدخول</a></p>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>eruda.init();</script>
+  <script type="module" src="./js/signup_controller.js"></script>
+</body>
 </html>
