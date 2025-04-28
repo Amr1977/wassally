@@ -12,6 +12,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const description = document.getElementById('description').value;
     const budget = document.getElementById('budget').value;
 
+    // Input Validation
+    if (!title || !description || !budget || budget <= 0) {
+      alert('يرجى ملء جميع الحقول بشكل صحيح.');
+      return;
+    }
+
     try {
       await postJob(title, description, budget);
       alert('تم نشر الوظيفة بنجاح');
