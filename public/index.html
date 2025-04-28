@@ -1,32 +1,78 @@
 <!-- index.html -->
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-  <title>Firebase Test</title>
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="styles/styles.css?v=1745831940255?v=1745824620345">
-
-  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js?v=1745831940255?v=1745824620345"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js?v=1745831940255?v=1745824620345"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js?v=1745831940255?v=1745824620345"></script>
+  <title>Delivery App</title>
+  <meta name="description" content="Empower delivery drivers with the best tools – compare offers, secure payments, and more.">
+  <!-- Link to external CSS (create styles.css in your project folder) -->
+  <link rel="stylesheet" href="./styles/styles.css">
+  <!-- Link to your JavaScript file (create app.js in your project folder) -->
+  <!-- <script src="app.js" defer></script> -->
 </head>
-
 <body>
-  <h1>Navigation</h1>
-  <ul>
-    <li><a href="404.html">404 Page</a></li>
-    <li><a href="client_home.html">Client Home</a></li>
-    <li><a href="client_post_job.html">Client Post Job</a></li>
-    <li><a href="client_view_offers.html">Client View Offers</a></li>
-    <li><a href="courier_home.html">Courier Home</a></li>
-    <li><a href="courier_view_jobs.html">Courier View Jobs</a></li>
-    <li><a href="index.html">Index</a></li>
-    <li><a href="signin.html">Sign In</a></li>
-    <li><a href="signup.html">Sign Up</a></li>
-  </ul>
-  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-  <script>eruda.init();</script>
+  <!-- Header Section -->
+  <header>
+    <nav>
+      <div class="logo">
+        <img src="logo.png" alt="Delivery App Logo" />
+      </div>
+      <ul>
+        <li><a href="#hero">Home</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#testimonials">Testimonials</a></li>
+        <li><a href="signin.html">Login</a></li>
+        <li><a href="#signup">Sign Up</a></li>
+      </ul>
+    </nav>
+  </header>
+  
+  <!-- Hero Section -->
+  <section id="hero">
+    <div class="hero-content">
+      <h1>Empower Delivery Drivers Everywhere</h1>
+      <p>Join the platform that puts you in control of your earnings and work-life balance.</p>
+      <button onclick="window.location.href='signup.html'">Get Started</button>
+    </div>
+  </section>
+  
+  <!-- Features Section -->
+  <section id="features">
+    <h2>Why Choose Our App?</h2>
+    <div class="features-container">
+      <div class="feature">
+        <h3>Compare Offers</h3>
+        <p>Find the best delivery opportunities tailored to your needs.</p>
+      </div>
+      <div class="feature">
+        <h3>Secure Payments</h3>
+        <p>Enjoy fast, reliable, and secure payment processing every time.</p>
+      </div>
+      <div class="feature">
+        <h3>User-Friendly Interface</h3>
+        <p>Navigate easily through our clean, intuitive design.</p>
+      </div>
+    </div>
+  </section>
+  
+  <!-- Testimonials Section -->
+  <section id="testimonials">
+    <h2>What Our Drivers Say</h2>
+    <blockquote>
+      <p>"This app completely transformed my workflow. It's a game changer!"</p>
+      <footer>- Ahmed, Independent Driver</footer>
+    </blockquote>
+  </section>
+  
+  <!-- Footer Section -->
+  <footer>
+    <p>&copy; 2025 Delivery App. All rights reserved.</p>
+    <ul>
+      <li><a href="privacy.html">Privacy Policy</a></li>
+      <li><a href="terms.html">Terms of Service</a></li>
+      <li><a href="contact.html">Contact Us</a></li>
+    </ul>
+  </footer>
 </body>
-
 </html>
