@@ -1,6 +1,6 @@
 // signup_controller.js
 
-import { signupUser } from './model.js';
+import { signup_user } from './model.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('signup-form');
@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const role = document.getElementById('role').value;
 
     try {
-      await signupUser(username, email, password, role);
+      await signup_user(username, email, password, role);
       if (role === 'client') {
         window.location.href = 'client_home.html';
       } else {
