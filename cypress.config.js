@@ -5,6 +5,7 @@ module.exports = defineConfig({
     setupNodeEvents(on, config) {
       // implement node event listeners here
     },
-    baseUrl: "http://localhost:5000" // Set the base URL for your tests
+    baseUrl: "http://localhost:5000",
+    supportFile: false // Disable support file
   }
 });
