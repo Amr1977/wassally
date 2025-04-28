@@ -5,14 +5,13 @@
   "main": "index.js",
   "scripts": {
     "start": "firebase serve",
-    "test": "cypress run",      // Command to run Cypress tests
-    "cypress:open": "cypress open" // Command to open Cypress GUI (useful in desktop environment)
+    "test": "cypress run"
   },
   "keywords": [],
   "author": "Amr Lotfy",
   "license": "ISC",
   "devDependencies": {
-    "cypress": "^14.3.2"        // Add the specific Cypress version here
+    "cypress": "^14.3.2"
   },
   "dependencies": {
     "firebase": "^9.23.0"
