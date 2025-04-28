@@ -18,26 +18,23 @@ function validateEmail(email) {
 
 // الحصول على بيانات النموذج
 function getFormData() {
-    const name = document.getElementById("name").value;
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-    const role = document.getElementById("role").value;
+    const name = document.getElementById('name')?.value || '';
+    const email = document.getElementById('email')?.value || '';
+    const password = document.getElementById('password')?.value || '';
+    const role = document.getElementById('role')?.value || '';
 
-    // تحقق من وجود المدخلات
     if (!name || !email || !password || !role) {
-        showAlert("يرجى ملء جميع الحقول.");
+        showAlert('يرجى ملء جميع الحقول.');
         return null;
     }
 
-    // تحقق من صحة البريد الإلكتروني
     if (!validateEmail(email)) {
-        showAlert("يرجى إدخال بريد إلكتروني صالح.");
+        showAlert('يرجى إدخال بريد إلكتروني صالح.');
         return null;
     }
 
-    // إذا كانت البيانات صالحة، إرجاعها
     return { name, email, password, role };
 }
 
 // تصدير الدوال
-export { showAlert, redirectToPage, getFormData };
+export { showAlert, redirectToPage, validateEmail, getFormData };
