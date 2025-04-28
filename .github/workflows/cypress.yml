@@ -1,11 +1,3 @@
-name: Run Cypress Tests
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
 jobs:
   e2e-tests:
     runs-on: ubuntu-latest
@@ -17,13 +9,18 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 16  # Specify the Node.js version your project uses
+          node-version: 16
 
       - name: Install Dependencies
         run: npm install
 
-      - name: Verify Cypress Installation
-        run: npx cypress verify
+      - name: Start Firebase Server
+        run: firebase serve &
+
+
+      - name: Wait for Server
+        run: npx wait-on http://localhost:5000
+        # Ensures the server is up and accessible before running tests
 
       - name: Run Cypress Tests
         run: npx cypress run
