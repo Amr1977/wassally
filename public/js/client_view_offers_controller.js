@@ -1,3 +1,5 @@
+// client_view_offers_controller.js 
+
 import { initializeFirebaseApp, getDatabase } from './model.js';
 
 const app = initializeFirebaseApp();
