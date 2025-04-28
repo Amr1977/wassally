@@ -1,0 +1,20 @@
+{
+  "name": "wassally",
+  "version": "1.0.0",
+  "description": "A delivery app empowering drivers.",
+  "main": "index.js",
+  "scripts": {
+    "start": "firebase serve",
+    "test": "cypress run",      // Command to run Cypress tests
+    "cypress:open": "cypress open" // Command to open Cypress GUI (useful in desktop environment)
+  },
+  "keywords": [],
+  "author": "Amr Lotfy",
+  "license": "ISC",
+  "devDependencies": {
+    "cypress": "^14.3.2"        // Add the specific Cypress version here
+  },
+  "dependencies": {
+    "firebase": "^9.23.0"
+  }
+}
