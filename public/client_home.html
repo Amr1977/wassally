@@ -1,25 +1,31 @@
 <!-- client_home.html -->
+
 <!DOCTYPE html>
 <html lang="ar">
 <head>
+  <title>الصفحة الرئيسية للعميل</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="styles/styles.css?v=1745824620324">
-
-  <title>صفحة العميل</title>
+  <link rel="stylesheet" href="styles/styles.css">
 </head>
 <body>
-  <h1>أهلاً بك أيها العميل</h1>
+  <h1>مرحبًا بك في الصفحة الرئيسية</h1>
+  <p>اختر الإجراء الذي ترغب في القيام به:</p>
 
-  <form id="post-job-form">
-    <input type="text" id="title" placeholder="عنوان المهمة" required><br>
-    <textarea id="description" placeholder="وصف المهمة" required></textarea><br>
-    <input type="number" id="budget" placeholder="الميزانية" required><br>
-    <button type="submit">نشر المهمة</button>
-  </form>
+  <div class="actions">
+    <a href="client_post_job.html" class="action-link">نشر طلب جديد</a>
+    <a href="client_view_offers.html" class="action-link">مراجعة العروض</a>
+  </div>
 
-  <a href="signin.html">تسجيل الخروج</a>
-
-  <script type="module" src="./js/client_home_controller.js?v=1745824620324"></script>
+  <button onclick="logout()">تسجيل الخروج</button>
+  
+  <script>
+    function logout() {
+      localStorage.clear();
+      window.location.href = "signin.html";
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>eruda.init();</script>
 </body>
 </html>
