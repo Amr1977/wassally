@@ -1,9 +1,9 @@
 // signin_controller.js
 
-import { signinUser } from './model.js';
+import { signin_user } from './model.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-  const form = document.getElementById('signin-form');
+  const form = document.getElementById('signin_form');
   if (!form) return;
 
   form.addEventListener('submit', async (e) => {
@@ -11,26 +11,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
 
-    // Input Validation
+    // Input validation
     if (!email || !password) {
       alert('يرجى إدخال البريد الإلكتروني وكلمة المرور.');
       return;
     }
 
     try {
-      const user = await signinUser(email, password);
-      const role = user.role;
+      const user = await signin_user(email, password);
 
-      // Role-based navigation
-      if (role === 'client') {
+      // Navigate based on user role
+      if (user.role === 'client') {
         window.location.href = 'client_home.html';
-      } else if (role === 'courier') {
+      } else if (user.role === 'courier') {
         window.location.href = 'courier_home.html';
       } else {
-        alert('تعذر تحديد دور المستخدم.');
+        throw new Error('Invalid user role.');
       }
     } catch (err) {
       alert('خطأ أثناء تسجيل الدخول: ' + err.message);
+      console.error('Login error:', err);
     }
   });
 });

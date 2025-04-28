@@ -1,3 +1,5 @@
+/* styles/styles.css */
+
 /* الجسم العام */
 body {
     font-family: Arial, sans-serif;
@@ -22,16 +24,22 @@ body {
     align-items: center;
 }
 
-/* العناوين */
-h1, h2, h3 {
-    font-size: 1.5em;
-    margin: 20px 0;
+/* روابط الإجراءات */
+.action_link {
+    font-size: 1.2em;
+    color: #007BFF;
+    text-decoration: none;
+    padding: 12px 25px;
+    border-radius: 5px;
+    background-color: #E6F0FF;
+    display: inline-block;
+    margin: 10px;
+    text-align: center;
 }
 
-/* الفقرات */
-p, li, .content {
-    font-size: 1.2em;
-    margin-bottom: 20px;
+.action_link:hover {
+    background-color: #0056b3;
+    color: white;
 }
 
 /* الأزرار */
@@ -76,40 +84,6 @@ input[type="submit"]:hover {
     background-color: #45a049;
 }
 
-/* تنسيق العناصر عند الحجوم الصغيرة */
-@media (max-width: 768px) {
-    body {
-        font-size: 14px;
-    }
-
-    h1, h2, h3 {
-        font-size: 1.2em;
-    }
-
-    button {
-        font-size: 1em;
-        padding: 8px 16px;
-    }
-
-    input[type="text"], input[type="email"], input[type="password"], textarea {
-        padding: 10px;
-    }
-}
-
-/* تحكم في المسافات بين العناصر */
-h3 {
-    margin-top: 20px;
-    margin-bottom: 15px;
-}
-
-p {
-    margin-bottom: 20px;
-}
-
-button {
-    margin-top: 20px;
-}
-
 /* الصور والأيقونات */
 img {
     width: 100%;
@@ -118,46 +92,4 @@ img {
 
 .icon {
     font-size: 2em; /* تكبير الأيقونات */
-}
-
-/* تنسيق النماذج */
-input[type="submit"], button {
-    font-size: 1.2em;
-    padding: 12px 25px;
-    border-radius: 5px;
-}
-
-input[type="submit"]:hover, button:hover {
-    background-color: #0056b3; /* تغيير اللون عند التمرير */
-}
-
-/* تنسيق العناصر باستخدام Grid و Flexbox */
-section {
-    flex: 1;
-    margin: 10px;
-    min-width: 300px;
-}
-
-.container {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-around;
-    align-items: center;
-}
-
-/* إضافة خلفية للشاشة */
-body {
-    background-color: #fafafa;
-}
-
-/* تحسين الألوان والظلال */
-button {
-    background-color: #007BFF;
-    border-radius: 5px;
-    padding: 12px 25px;
-    font-size: 1.2em;
-}
-
-button:hover {
-    background-color: #0056b3;
 }

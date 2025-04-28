@@ -1,9 +1,9 @@
 // client_home_controller.js
 
-import { postJob } from './model.js';
+import { post_job } from './model.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-  const form = document.getElementById('post-job-form');
+  const form = document.getElementById('post_job_form');
   if (!form) return;
 
   form.addEventListener('submit', async (e) => {
@@ -12,14 +12,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const description = document.getElementById('description').value;
     const budget = document.getElementById('budget').value;
 
-    // Input Validation
+    // Input validation
     if (!title || !description || !budget || budget <= 0) {
       alert('يرجى ملء جميع الحقول بشكل صحيح.');
       return;
     }
 
     try {
-      await postJob(title, description, budget);
+      await post_job(title, description, budget);
       alert('تم نشر الوظيفة بنجاح');
       window.location.href = 'client_view_offers.html';
     } catch (err) {
