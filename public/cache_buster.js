@@ -27,8 +27,8 @@ function updateQueryStrings(filePath) {
     const htmlContent = fs.readFileSync(filePath, 'utf8');
 
     // Regular expressions for CSS and JS file references
-    const cssRegex = /<link.*href="(.+?\.css)"/g;
-    const jsRegex = /<script.*src="(.+?\.js)"/g;
+    const cssRegex = /<link[^>]*href=["']([^"']+\.css)(\?[^"']*)?["']/g;
+    const jsRegex = /<script[^>]*src=["']([^"']+\.js)(\?[^"']*)?["']/g;
 
     // Current timestamp for cache busting
     const timestamp = Date.now();
