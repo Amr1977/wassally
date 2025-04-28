@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const jobsList = document.getElementById('jobs-list');
   if (!jobsList) return;
 
+  jobsList.innerHTML = '<p>جاري تحميل المهام...</p>';
   try {
     const jobs = await fetchJobs();
     jobsList.innerHTML = '';
@@ -16,23 +17,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         <h3>${job.title}</h3>
         <p>${job.description}</p>
         <p>العميل: ${job.clientName}</p>
-        <button onclick="apply('${job.id}')">التقديم</button>
+        <button class="apply-btn" data-job-id="${job.id}">التقديم</button>
         <hr>
       `;
       jobsList.appendChild(div);
     });
 
   } catch (err) {
-    jobsList.innerHTML = 'خطأ أثناء تحميل الوظائف: ' + err.message;
+    jobsList.innerHTML = '<p>تعذر تحميل الوظائف، يرجى المحاولة لاحقاً.</p>';
+    console.error('Error fetching jobs:', err);
   }
 });
 
-window.apply = async (jobId) => {
-  try {
-    await applyForJob(jobId);
-    alert('تم التقديم على الوظيفة');
-    window.location.reload();
-  } catch (err) {
-    alert('خطأ أثناء التقديم: ' + err.message);
+document.getElementById('jobs-list').addEventListener('click', async (e) => {
+  if (e.target.classList.contains('apply-btn')) {
+    const jobId = e.target.getAttribute('data-job-id');
+    try {
+      await applyForJob(jobId);
+      alert('تم التقديم على الوظيفة');
+      window.location.reload();
+    } catch (err) {
+      alert('خطأ أثناء التقديم: ' + err.message);
+    }
   }
-};
+});
