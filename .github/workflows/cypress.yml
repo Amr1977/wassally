@@ -1,13 +1,10 @@
-
 name: Run Cypress Tests
- 
- on:
-   push:
-     branches: [ main ]
-   pull_request:
-     branches: [ main ]
- 
- 
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   e2e-tests:
@@ -27,7 +24,6 @@ jobs:
 
       - name: Start Firebase Server
         run: firebase serve &
-
 
       - name: Wait for Server
         run: npx wait-on http://localhost:5000
