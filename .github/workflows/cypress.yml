@@ -1,4 +1,15 @@
-jobs:
+
+name: Run Cypress Tests
+ 
+ on:
+   push:
+     branches: [ main ]
+   pull_request:
+     branches: [ main ]
+ 
+ 
+
+jbs:
   e2e-tests:
     runs-on: ubuntu-latest
 
