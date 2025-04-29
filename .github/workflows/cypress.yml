@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 16  # Specify the Node.js version your project uses
+          node-version: 20  # Upgrade to Node.js v20
 
       - name: Install Dependencies
         run: npm install
@@ -32,7 +32,7 @@ jobs:
 
       - name: Wait for Server
         run: npx wait-on http://localhost:5000
-        # Ensures the server is up and accessible before running tests
+        # Ensures the server is up and running before Cypress starts
 
       - name: Run Cypress Tests
         run: npx cypress run --config-file cypress.config.js
