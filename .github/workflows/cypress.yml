@@ -9,7 +9,7 @@ name: Run Cypress Tests
  
  
 
-jbs:
+jobs:
   e2e-tests:
     runs-on: ubuntu-latest
 
