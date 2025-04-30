@@ -10,7 +10,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js?v=1745831940247"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js?v=1745831940247"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js?v=1745831940247"></script>
-
+  <script src="js/indexeddb_logs.js" defer></script>
 </head>
 <body>
   <h2>مرحبًا بك أيها المندوب</h2>
@@ -26,7 +26,7 @@
     // If the courier is logged in successfully, redirect them to the offers page
     window.onload = function() {
       // Assuming a session check or a similar login check
-      const courierLoggedIn = localStorage.getItem("courierId");  // Check if courier is logged in
+      const courierLoggedIn = localStorage.getItem("user");  // Check if courier is logged in
 
       if (courierLoggedIn) {
         window.location.href = "courier_view_jobs.html";  // Redirect to the view offers page if logged in
@@ -37,10 +37,6 @@
   </script>
   <h1>Navigation</h1>
   <ul>
-    <li><a href="404.html">404 Page</a></li>
-    <li><a href="client_home.html">Client Home</a></li>
-    <li><a href="client_post_job.html">Client Post Job</a></li>
-    <li><a href="client_view_offers.html">Client View Offers</a></li>
     <li><a href="courier_home.html">Courier Home</a></li>
     <li><a href="courier_view_jobs.html">Courier View Jobs</a></li>
     <li><a href="index.html">Index</a></li>
