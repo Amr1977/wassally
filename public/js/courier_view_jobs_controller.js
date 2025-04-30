@@ -1,6 +1,7 @@
 // courier_view_jobs_controller.js
 
 import { fetch_jobs, apply_for_job } from './model.js';
+import { add_log, get_logs, clear_logs } from "./indexeddb_logs.js";
 
 document.addEventListener('DOMContentLoaded', async () => {
   const jobs_list = document.getElementById('jobs_list');

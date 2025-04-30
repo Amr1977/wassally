@@ -1,5 +1,7 @@
 // model.js
 
+import { add_log, get_logs, clear_logs } from "./indexeddb_logs.js";
+
 // Firebase Configuration
 const firebase_config = {  
   apiKey: "AIzaSyBXyTzYT_kjwcibZo3zXQrhOdPyUksodig",  

@@ -1,4 +1,5 @@
 import { postJob } from './model.js'; // تأكد من استيراد الدالة المناسبة من model.js
+import { add_log, get_logs, clear_logs } from "./indexeddb_logs.js";
 
 document.addEventListener('DOMContentLoaded', () => {
     alert("finished loading");

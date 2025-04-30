@@ -2,12 +2,15 @@
 
 import { signin_user } from './model.js';
 
+import { add_log, get_logs, clear_logs } from "./indexeddb_logs.js";
+
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('signin_form');
   if (!form) return;
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    add_log("signin_controller submit event.");
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
 
@@ -30,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (err) {
       alert('خطأ أثناء تسجيل الدخول: ' + err.message);
-      console.error('Login error:', err);
+      console.log('Login error:', err);
     }
   });
 });

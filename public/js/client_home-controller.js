@@ -1,6 +1,7 @@
 // client_home_controller.js
 
 import { post_job } from './model.js';
+import { add_log, get_logs, clear_logs } from "./indexeddb_logs.js";
 
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('post_job_form');

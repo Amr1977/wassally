@@ -1,5 +1,7 @@
 // view.js
 
+import { add_log, get_logs, clear_logs } from "./indexeddb_logs.js";
+
 // عرض التنبيه
 function show_alert(message) {
     alert(message);

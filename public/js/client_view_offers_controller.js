@@ -1,6 +1,7 @@
 // client_view_offers_controller.js 
 
 import { initializeFirebaseApp, getDatabase } from './model.js';
+import { add_log, get_logs, clear_logs } from "./indexeddb_logs.js";
 
 const app = initializeFirebaseApp();
 const db = getDatabase();
