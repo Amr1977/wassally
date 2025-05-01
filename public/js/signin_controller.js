@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       const user = await signin_user(email, password);
-
+      alert("user is logged in " + user);
       // Navigate based on user role
       if (user.role === 'client') {
         window.location.href = 'client_home.html';
