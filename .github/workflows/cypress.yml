@@ -1,10 +1,10 @@
-name: Run Cypress Tests
+name: Run Cypress and Cucumber Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
 
 jobs:
   e2e-tests:

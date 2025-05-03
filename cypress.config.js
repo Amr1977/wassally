@@ -1,3 +1,4 @@
+
 const { defineConfig } = require("cypress");
 
 module.exports = defineConfig({
@@ -9,3 +10,17 @@ module.exports = defineConfig({
     supportFile: false // Disable support file
   }
 });
+const { defineConfig } = require("cypress");
+const createEsbuildPlugin = require("cypress-cucumber-preprocessor/esbuild");
+
+module.exports = defineConfig({
+  e2e: {
+    specPattern: "**/*.feature",
+    setupNodeEvents(on, config) {
+      createEsbuildPlugin(on, config);
+      return config;
+    },
+  },
+});
+const { defineConfig } = require("cypress");
+const createEsbuildPlugin = require("cypress-cucumber-pr
