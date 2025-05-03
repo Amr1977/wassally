@@ -10,7 +10,7 @@ module.exports = defineConfig({
     supportFile: false // Disable support file
   }
 });
-const { defineConfig } = require("cypress");
+
 const createEsbuildPlugin = require("cypress-cucumber-preprocessor/esbuild");
 
 module.exports = defineConfig({
@@ -22,5 +22,3 @@ module.exports = defineConfig({
     },
   },
 });
-const { defineConfig } = require("cypress");
-const createEsbuildPlugin = require("cypress-cucumber-pr
