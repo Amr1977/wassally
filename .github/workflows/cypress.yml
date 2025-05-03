@@ -19,23 +19,25 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 20  # Upgrade to Node.js v20
+          node-version: 20
 
       - name: Install Dependencies
-        run: npm install
+        run: npm ci  # Ensures a clean install
 
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
-        # Installs Firebase CLI globally so it's available in the workflow
+
+      - name: Install Cypress Cucumber Preprocessor
+        run: npm install @badeball/cypress-cucumber-preprocessor
 
       - name: Start Firebase Server
         run: firebase emulators:start --only hosting &
-        # Starts the Firebase hosting emulator in the background
 
       - name: Wait for Server
         run: npx wait-on http://localhost:5000
-        # Ensures the server is up and running before Cypress starts
+
+      - name: Extra Delay for Firebase Emulator
+        run: sleep 10  # Ensures Firebase is fully ready
 
       - name: Run Cypress Tests
         run: npx cypress run --config-file cypress.config.js
-        # Runs Cypress tests with the specified config file
