@@ -6,7 +6,12 @@ import { add_log, get_logs, clear_logs } from "./indexeddb_logs.js";
 
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('signin_form');
-  if (!form) return;
+  if (!form) 
+  {
+    alert("unable to find login form");
+    return;
+  }
+  
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -29,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (user.role === 'courier') {
         window.location.href = 'courier_home.html';
       } else {
+        alert("invalid role " + user.role);
         throw new Error('Invalid user role.');
       }
     } catch (err) {
