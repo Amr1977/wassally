@@ -1,16 +1,13 @@
-import { postJob } from './model.js'; // تأكد من استيراد الدالة المناسبة من model.js
+import { post_job } from './model.js'; // تأكد من استيراد الدالة المناسبة من model.js
 import { add_log, get_logs, clear_logs } from "./indexeddb_logs.js";
 
 document.addEventListener('DOMContentLoaded', () => {
     alert("finished loading");
     // الحصول على الاستمارة من DOM
-    const postJobForm = document.getElementById("post-job-form");
-    if (!postJobForm) return;
+    const post_job_form = document.getElementById("post_job_form");
+    if (!post_job_form) return;
 
-
-
-
-    postJobForm.addEventListener('submit', async (event) => {
+    post_job_form.addEventListener('submit', async (event) => {
         event.preventDefault(); // لمنع إرسال الاستمارة بشكل افتراضي
 
         // الحصول على القيم من الحقول في الاستمارة
@@ -26,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             // نشر الوظيفة في قاعدة البيانات
-            await postJob(title, description, budget);
+            await post_job(title, description, budget);
             alert("تم نشر الوظيفة بنجاح!");
 
             // إعادة توجيه المستخدم إلى صفحة "عرض العروض"

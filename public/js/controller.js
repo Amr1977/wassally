@@ -22,8 +22,8 @@ signupForm.addEventListener('submit', async (event) => {
 });
 
 // Handle post job form submission
-const postJobForm = document.querySelector("#post-job-form");
-postJobForm.addEventListener('submit', async (event) => {
+const post_job_form = document.querySelector("#post_job_form");
+post_job_form.addEventListener('submit', async (event) => {
   event.preventDefault();
   const title = document.querySelector("#title").value;
   const description = document.querySelector("#description").value;
@@ -48,7 +48,7 @@ postJobForm.addEventListener('submit', async (event) => {
 });
 
 // Handle fetching available jobs for courier
-const jobsContainer = document.querySelector("#jobs-container");
+const jobs_container = document.querySelector("#jobs_container");
 window.addEventListener('load', async () => {
   try {
     // استخدام دالة fetchJobs من model.js
@@ -57,7 +57,7 @@ window.addEventListener('load', async () => {
     snapshot.forEach((doc) => {
       jobs.push(doc.data());
     });
-    jobsContainer.innerHTML = jobs.map(job => `<p>${job.title} - ${job.description}</p>`).join('');
+    jobs_container.innerHTML = jobs.map(job => `<p>${job.title} - ${job.description}</p>`).join('');
   } catch (error) {
     console.error('Error fetching jobs: ', error);
   }
