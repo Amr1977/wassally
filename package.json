@@ -1,7 +1,7 @@
 {
-  "name": "wassally",
+  "name": "badr_delivery_platform",
   "version": "1.0.0",
-  "description": "A delivery app empowering drivers.",
+  "description": "Professional Delivery Platform",
   "main": "index.js",
   "scripts": {
     "start": "firebase serve",
