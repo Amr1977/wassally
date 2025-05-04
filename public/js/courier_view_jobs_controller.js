@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   } catch (err) {
     jobs_list.innerHTML = '<p>تعذر تحميل الوظائف، يرجى المحاولة لاحقاً.</p>';
-    console.error('Error fetching jobs:', err);
+    alert('Error fetching jobs:' + err.message);
   }
 });
 

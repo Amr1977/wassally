@@ -23,6 +23,22 @@ if (!firebase.apps.length) {
 const auth = firebase.auth();
 const db = firebase.database();
 
+function initialize_firebase_app() {
+  if (!firebase.apps.length) {
+    firebase.initializeApp(firebase_config);
+  } 
+
+  return firebase.app;
+}
+
+function get_database(){
+  if (!db) {
+    db = firebase.database();
+  }
+
+  return db;
+}
+
 // Helper functions
 function get_user_from_local_storage() {
   const user = localStorage.getItem('user');
@@ -125,11 +141,15 @@ async function apply_for_job(job_id) {
   });
 }
 
+
+
 export {
   signup_user,
   signin_user,
   post_job,
   fetch_jobs,
   apply_for_job,
-  get_user_from_local_storage
+  get_user_from_local_storage,
+  get_database,
+  initialize_firebase_app
 };

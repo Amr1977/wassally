@@ -1,20 +1,17 @@
 // client_view_offers_controller.js 
 
-import { initializeFirebaseApp, getDatabase } from './model.js';
+import { initialize_firebase_app, get_database, get_user_from_local_storage } from './model.js';
 import { add_log, get_logs, clear_logs } from "./indexeddb_logs.js";
 
-const app = initializeFirebaseApp();
-const db = getDatabase();
-
 document.addEventListener('DOMContentLoaded', () => {
-    const clientId = localStorage.getItem("userId");
-    const offersContainer = document.getElementById("offersContainer");
+    const clientId = get_user_from_local_storage().id;
+    const offers_container = document.getElementById("offers_container");
 
-    function loadClientJobsAndOffers() {
-        db.ref("jobs").orderByChild("clientId").equalTo(clientId).once("value", snapshot => {
-            offersContainer.innerHTML = "";
+    function load_client_jobs_and_offers() {
+        get_database().ref("jobs").orderByChild("clientId").equalTo(clientId).once("value", snapshot => {
+            offers_container.innerHTML = "";
             if (!snapshot.exists()) {
-                offersContainer.innerHTML = "<p>لا توجد طلبات حالياً.</p>";
+                offers_container.innerHTML = "<p>لا توجد طلبات حالياً.</p>";
                 return;
             }
             snapshot.forEach(jobSnap => {
@@ -23,19 +20,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 const jobDiv = document.createElement("div");
                 jobDiv.className = "job";
                 jobDiv.innerHTML = `
-                                                                                                                                                                                                        <h3>${job.title}</h3>
-                                                                                                                                                                                                                            <p>${job.details}</p>
-                                                                                                                                                                                                                                                <div id="offers_${jobId}">تحميل العروض...</div>
-                                                                                                                                                                                                                                                                `;
-                offersContainer.appendChild(jobDiv);
-                loadOffersForJob(jobId);
+                                    <h3>${job.title}</h3>
+                                    <p>${job.details}</p>
+                                    <div id="offers_${jobId}">تحميل العروض...</div>
+                                    `;
+                offers_container.appendChild(jobDiv);
+                load_offers_for_job(jobId);
             });
         });
     }
 
-    function loadOffersForJob(jobId) {
+    function load_offers_for_job(jobId) {
         const offersDiv = document.getElementById(`offers_${jobId}`);
-        db.ref(`offers/${jobId}`).once("value", snapshot => {
+        get_database().ref(`offers/${jobId}`).once("value", snapshot => {
             offersDiv.innerHTML = "";
             if (!snapshot.exists()) {
                 offersDiv.innerHTML = "<p>لا يوجد عروض حتى الآن.</p>";
@@ -47,25 +44,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 const offerEl = document.createElement("div");
                 offerEl.className = "offer";
                 offerEl.innerHTML = `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <p>معرف المندوب: ${offer.courierId}</p>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <p>تاريخ العرض: ${new Date(offer.offeredAt).toLocaleString()}</p>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <p>الحالة: ${offer.status}</p>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ${offer.status === "pending" ? `<button onclick="acceptOffer('${jobId}', '${offerId}', '${offer.courierId}')">قبول العرض</button>` : ''}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            `;
+                                    <p>معرف المندوب: ${offer.courierId}</p>
+                                    <p>تاريخ العرض: ${new Date(offer.offeredAt).toLocaleString()}</p>
+                                    <p>الحالة: ${offer.status}</p>
+                                    ${offer.status === "pending" ? `<button onclick="acceptOffer('${jobId}', '${offerId}', '${offer.courierId}')">قبول العرض</button>` : ''}
+                                    `;
                 offersDiv.appendChild(offerEl);
             });
         });
     }
 
     window.acceptOffer = function (jobId, offerId, courierId) {
-        db.ref(`offers/${jobId}/${offerId}/status`).set("accepted");
-        db.ref(`jobs/${jobId}`).update({
+        get_database().ref(`offers/${jobId}/${offerId}/status`).set("accepted");
+        get_database().ref(`jobs/${jobId}`).update({
             status: "assigned",
             courierId: courierId
         });
         alert("تم قبول العرض بنجاح!");
-        loadClientJobsAndOffers();
+        load_client_jobs_and_offers();
     }
 
-    loadClientJobsAndOffers();
+    load_client_jobs_and_offers();
 });
