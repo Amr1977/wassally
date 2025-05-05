@@ -61,7 +61,6 @@ async function signup_user(username, email, password, role) {
   });
 
   // Save to localStorage
-
   let user_local_storage = JSON.stringify({
     id: current_user.uid,
     name: username,
@@ -124,6 +123,8 @@ async function fetch_jobs() {
   return jobs;
 }
 
+//TODO open a modal window to get offer details
+//TODO do not assign offer here, when customer accepts an offer assign it.
 async function apply_for_job(job_id) {
   const user = get_user_from_local_storage();
   const job_ref = db.ref('jobs/' + job_id);
@@ -140,8 +141,6 @@ async function apply_for_job(job_id) {
     courier_name: user.name
   });
 }
-
-
 
 export {
   signup_user,

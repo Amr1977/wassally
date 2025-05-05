@@ -1,0 +1,16 @@
+<div id="offer_modal" style="display:none;">
+  <div class="modal-content">
+    <span class="close" onclick="close_offer_modal()">&times;</span>
+    <h2>Send Offer</h2>
+    <form id="offer_form">
+      <input type="hidden" id="job_id">
+      <label for="offered_price">Offered Price:</label>
+      <input type="number" id="offered_price" required>
+      
+      <label for="offer_message">Message to Customer:</label>
+      <textarea id="offer_message" required></textarea>
+      
+      <button type="submit">Submit Offer</button>
+    </form>
+  </div>
+</div>

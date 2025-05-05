@@ -4,11 +4,11 @@ import { initialize_firebase_app, get_database, get_user_from_local_storage } fr
 import { add_log, get_logs, clear_logs } from "./indexeddb_logs.js";
 
 document.addEventListener('DOMContentLoaded', () => {
-    const clientId = get_user_from_local_storage().id;
+    const client_id = get_user_from_local_storage().id;
     const offers_container = document.getElementById("offers_container");
 
     function load_client_jobs_and_offers() {
-        get_database().ref("jobs").orderByChild("clientId").equalTo(clientId).once("value", snapshot => {
+        get_database().ref("jobs").orderByChild("client_id").equalTo(client_id).once("value", snapshot => {
             offers_container.innerHTML = "";
             if (!snapshot.exists()) {
                 offers_container.innerHTML = "<p>لا توجد طلبات حالياً.</p>";
@@ -16,49 +16,49 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             snapshot.forEach(jobSnap => {
                 const job = jobSnap.val();
-                const jobId = jobSnap.key;
-                const jobDiv = document.createElement("div");
-                jobDiv.className = "job";
-                jobDiv.innerHTML = `
+                const job_id = jobSnap.key;
+                const job_div = document.createElement("div");
+                job_div.className = "job";
+                job_div.innerHTML = `
                                     <h3>${job.title}</h3>
                                     <p>${job.details}</p>
-                                    <div id="offers_${jobId}">تحميل العروض...</div>
+                                    <div id="offers_${job_id}">تحميل العروض...</div>
                                     `;
-                offers_container.appendChild(jobDiv);
-                load_offers_for_job(jobId);
+                offers_container.appendChild(job_div);
+                load_offers_for_job(job_id);
             });
         });
     }
 
-    function load_offers_for_job(jobId) {
-        const offersDiv = document.getElementById(`offers_${jobId}`);
-        get_database().ref(`offers/${jobId}`).once("value", snapshot => {
-            offersDiv.innerHTML = "";
+    function load_offers_for_job(job_id) {
+        const offers_div = document.getElementById(`offers_${job_id}`);
+        get_database().ref(`offers/${job_id}`).once("value", snapshot => {
+            offers_div.innerHTML = "";
             if (!snapshot.exists()) {
-                offersDiv.innerHTML = "<p>لا يوجد عروض حتى الآن.</p>";
+                offers_div.innerHTML = "<p>لا يوجد عروض حتى الآن.</p>";
                 return;
             }
-            snapshot.forEach(offerSnap => {
-                const offer = offerSnap.val();
-                const offerId = offerSnap.key;
-                const offerEl = document.createElement("div");
-                offerEl.className = "offer";
-                offerEl.innerHTML = `
-                                    <p>معرف المندوب: ${offer.courierId}</p>
-                                    <p>تاريخ العرض: ${new Date(offer.offeredAt).toLocaleString()}</p>
+            snapshot.forEach(offer_snap => {
+                const offer = offer_snap.val();
+                const offer_id = offer_snap.key;
+                const offer_element = document.createElement("div");
+                offer_element.className = "offer";
+                offer_element.innerHTML = `
+                                    <p>معرف المندوب: ${offer.courier_id}</p>
+                                    <p>تاريخ العرض: ${new Date(offer.offered_at).toLocaleString()}</p>
                                     <p>الحالة: ${offer.status}</p>
-                                    ${offer.status === "pending" ? `<button onclick="acceptOffer('${jobId}', '${offerId}', '${offer.courierId}')">قبول العرض</button>` : ''}
+                                    ${offer.status === "pending" ? `<button onclick="accept_offer('${job_id}', '${offer_id}', '${offer.courier_id}')">قبول العرض</button>` : ''}
                                     `;
-                offersDiv.appendChild(offerEl);
+                offers_div.appendChild(offer_element);
             });
         });
     }
 
-    window.acceptOffer = function (jobId, offerId, courierId) {
-        get_database().ref(`offers/${jobId}/${offerId}/status`).set("accepted");
-        get_database().ref(`jobs/${jobId}`).update({
+    window.accept_offer = function (job_id, offer_id, courier_id) {
+        get_database().ref(`offers/${job_id}/${offer_id}/status`).set("accepted");
+        get_database().ref(`jobs/${job_id}`).update({
             status: "assigned",
-            courierId: courierId
+            courierId: courier_id
         });
         alert("تم قبول العرض بنجاح!");
         load_client_jobs_and_offers();

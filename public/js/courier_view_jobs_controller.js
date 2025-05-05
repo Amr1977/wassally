@@ -2,8 +2,20 @@
 
 import { fetch_jobs, apply_for_job } from './model.js';
 import { add_log, get_logs, clear_logs } from "./indexeddb_logs.js";
+import { save_offer } from './send_offer_model.js';
+import { open_offer_modal } from './send_offer_controller.js';
+
+function append_send_offer_modal() {
+  fetch("../send_offer_view.html")
+  .then(response => response.text())
+  .then(html => {
+    document.body.insertAdjacentHTML("beforeend", html);
+  });
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
+  append_send_offer_modal();
+
   const jobs_list = document.getElementById('jobs_list');
   if (!jobs_list) return;
 
@@ -34,9 +46,7 @@ document.getElementById('jobs_list').addEventListener('click', async (e) => {
   if (e.target.classList.contains('apply_btn')) {
     const job_id = e.target.getAttribute('data-job-id');
     try {
-      await apply_for_job(job_id);
-      alert('تم التقديم على الوظيفة');
-      window.location.reload();
+      open_offer_modal(job_id);
     } catch (err) {
       alert('خطأ أثناء التقديم: ' + err.message);
     }
