@@ -23,16 +23,18 @@ if (!firebase.apps.length) {
 const auth = firebase.auth();
 const db = firebase.database();
 
+
 function initialize_firebase_app() {
   if (!firebase.apps.length) {
-    firebase.initializeApp(firebase_config);
+    return firebase.initializeApp(firebase_config);
   } 
 
-  return firebase.app;
+  return firebase.app();
 }
 
-function get_database(){
+async function get_database(){
   if (!db) {
+    initialize_firebase_app();
     db = firebase.database();
   }
 

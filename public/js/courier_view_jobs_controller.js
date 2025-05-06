@@ -6,11 +6,11 @@ import { save_offer } from './send_offer_model.js';
 import { open_offer_modal } from './send_offer_controller.js';
 
 function append_send_offer_modal() {
+//TODO check if model exists to avoid appending repeatedly
   fetch("../send_offer_view.html")
   .then(response => response.text())
   .then(html => {
     document.body.insertAdjacentHTML("beforeend", html);
-    alert("Inserted html: " + html);
   });
 }
 
