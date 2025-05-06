@@ -1,4 +1,4 @@
-export class Offer {
+class Offer {
     constructor(job_id, courier_id, offered_price, offer_message, timestamp) {
         this.job_id = job_id;
         this.courier_id = courier_id;
@@ -8,7 +8,7 @@ export class Offer {
     }
 }
 
-export function save_offer(offer) {
+function save_offer(offer) {
     return firebase.database().ref("offers").push(offer);
 }
 
