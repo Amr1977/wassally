@@ -12,7 +12,7 @@
   "license": "ISC",
   "devDependencies": {
     "cypress": "^14.3.2",
-    "cypress-cucumber-preprocessor": "^18.0.0",
+    "cypress-cucumber-preprocessor": "^4.3.1",
     "esbuild": "^0.17.0"
   },
   "dependencies": {
