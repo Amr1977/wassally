@@ -9,7 +9,7 @@ class Offer {
 }
 
 function save_offer(offer) {
-    return firebase.database().ref("offers").push(offer);
+    return firebase.database().ref(`offers/${offer.job_id}`).push(offer);
 }
 
 export {
