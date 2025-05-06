@@ -4,7 +4,7 @@ import { get_database, get_user_from_local_storage } from './model.js';
 import { add_log, get_logs, clear_logs } from "./indexeddb_logs.js";
 
 const client_id = get_user_from_local_storage().id;
-const offers_container = null;
+const offers_div = document.getElementById(`offers_${job_id}`);
 
 function load_client_jobs_and_offers() {
     get_database().ref("jobs").orderByChild("client_id").equalTo(client_id).once("value", snapshot => {
@@ -30,7 +30,7 @@ function load_client_jobs_and_offers() {
 }
 
 function load_offers_for_job(job_id) {
-    const offers_div = document.getElementById(`offers_${job_id}`);
+    
     get_database().ref(`offers/${job_id}`).once("value", snapshot => {
         offers_div.innerHTML = "";
         if (!snapshot.exists()) {
