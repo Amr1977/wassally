@@ -11,7 +11,9 @@
   "author": "Amr Lotfy",
   "license": "ISC",
   "devDependencies": {
-    "cypress": "^14.3.2"
+    "cypress": "^14.3.2",
+    "cypress-cucumber-preprocessor": "^18.0.0",
+    "esbuild": "^0.17.0"
   },
   "dependencies": {
     "firebase": "^9.23.0"
