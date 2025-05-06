@@ -1,8 +1,6 @@
 // courier_view_jobs_controller.js
 
 import { fetch_jobs } from './model.js';
-import { add_log, get_logs, clear_logs } from "./indexeddb_logs.js";
-import { save_offer } from './send_offer_model.js';
 import { open_offer_modal } from './send_offer_controller.js';
 
 function append_send_offer_modal() {
