@@ -13,6 +13,6 @@ function save_offer(offer) {
 }
 
 export {
-    offer,
+    Offer,
     save_offer
 }
