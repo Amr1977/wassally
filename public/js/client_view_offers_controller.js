@@ -1,7 +1,6 @@
 // client_view_offers_controller.js 
 
 import { get_database, get_user_from_local_storage } from './model.js';
-import { add_log, get_logs, clear_logs } from "./indexeddb_logs.js";
 
 const client_id = get_user_from_local_storage().id;
 const offers_div = document.getElementById(`offers_${job_id}`);
