@@ -147,7 +147,6 @@ export {
   signin_user,
   post_job,
   fetch_jobs,
-  apply_for_job,
   get_user_from_local_storage,
   get_database,
   initialize_firebase_app
