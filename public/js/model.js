@@ -70,8 +70,6 @@ async function signup_user(username, email, password, role) {
     role
   });
   localStorage.setItem('user', user_local_storage);
-
-  alert(user_local_storage);
 }
 
 async function signin_user(email, password) {
@@ -115,7 +113,7 @@ async function post_job(title, description, budget) {
 }
 
 async function fetch_jobs() {
-  const snapshot = await db.ref('jobs').orderByChild('status').equalTo('open').once('value');
+  const snapshot = await get_database().ref('jobs').orderByChild('status').equalTo('open').once('value');
   const jobs = [];
 
   snapshot.forEach((child) => {

@@ -23,7 +23,7 @@ if (!jobs_list) {
   append_send_offer_modal();
   jobs_list.innerHTML = '<p>جاري تحميل المهام...</p>';
 
-  fetch_jobs()
+  await fetch_jobs()
     .then(jobs => {
       jobs_list.innerHTML = '';
       jobs.forEach(job => {
