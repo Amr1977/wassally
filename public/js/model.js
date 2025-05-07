@@ -32,15 +32,6 @@ function initialize_firebase_app() {
   return firebase.app();
 }
 
-function get_database(){
-  if (!db) {
-    initialize_firebase_app();
-    db = firebase.database();
-  }
-
-  return db;
-}
-
 // Helper functions
 function get_user_from_local_storage() {
   const user = localStorage.getItem('user');
@@ -113,7 +104,7 @@ async function post_job(title, description, budget) {
 }
 
 async function fetch_jobs() {
-  const snapshot = await get_database().ref('jobs').orderByChild('status').equalTo('open').once('value');
+  const snapshot = firebase.database().ref('jobs').orderByChild('status').equalTo('open').once('value');
   const jobs = [];
 
   snapshot.forEach((child) => {
@@ -148,6 +139,5 @@ export {
   post_job,
   fetch_jobs,
   get_user_from_local_storage,
-  get_database,
   initialize_firebase_app
 };

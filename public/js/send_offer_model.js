@@ -1,4 +1,4 @@
-import { initialize_firebase_app, get_database } from "./model";
+import { initialize_firebase_app } from "./model";
 
 class Offer {
     constructor(job_id, courier_id, offered_price, offer_message, timestamp) {
@@ -11,7 +11,7 @@ class Offer {
 }
 
 function save_offer(offer) {
-    return get_database().ref(`offers/${offer.job_id}`).push(offer)
+    return firebase.database().ref(`offers/${offer.job_id}`).push(offer)
   .then(snapshot => console.log("Offer saved!", snapshot.key))
   .catch(error => console.error("Error saving offer:", error));
 }

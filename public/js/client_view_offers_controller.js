@@ -1,6 +1,6 @@
 // client_view_offers_controller.js 
 
-import {get_user_from_local_storage, initialize_firebase_app } from './model.js';
+import { get_user_from_local_storage } from './model.js';
 
 const client_id = get_user_from_local_storage().id;
 const offers_container = document.getElementById("offers_container");
