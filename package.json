@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Professional Delivery Platform",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "firebase serve",
     "test": "cypress run"

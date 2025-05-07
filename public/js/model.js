@@ -32,7 +32,7 @@ function initialize_firebase_app() {
   return firebase.app();
 }
 
-async function get_database(){
+function get_database(){
   if (!db) {
     initialize_firebase_app();
     db = firebase.database();
