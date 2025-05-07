@@ -3,7 +3,7 @@
 import { fetch_jobs } from './model.js';
 import { open_offer_modal } from './send_offer_controller.js';
 
-alert("welcome to courier view jobs");
+window.alert("welcome to courier view jobs");
 
 function append_send_offer_modal() {
   //TODO check if model exists to avoid appending repeatedly
@@ -15,7 +15,7 @@ function append_send_offer_modal() {
 }
 
 
-alert("courier view jobs controller");
+window.alert("courier view jobs controller");
 append_send_offer_modal();
 
 const jobs_list = document.getElementById('jobs_list');
