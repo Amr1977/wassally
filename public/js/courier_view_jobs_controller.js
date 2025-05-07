@@ -19,10 +19,7 @@ append_send_offer_modal();
 const jobs_list = document.getElementById('jobs_list');
 if (!jobs_list) {
   alert("jobs_list not found!!");
-  return;
-}
-
-if (jobs_list) {
+} else {
   append_send_offer_modal();
   jobs_list.innerHTML = '<p>جاري تحميل المهام...</p>';
 
@@ -45,16 +42,18 @@ if (jobs_list) {
       jobs_list.innerHTML = '<p>تعذر تحميل الوظائف، يرجى المحاولة لاحقاً.</p>';
       alert(`Error fetching jobs: ${err.message}`);
     });
+
+  // Event Listener Setup
+  jobs_list.addEventListener('click', (e) => {
+    if (e.target.classList.contains('apply_btn')) {
+      const job_id = e.target.getAttribute('data-job-id');
+      try {
+        open_offer_modal(job_id);
+      } catch (err) {
+        alert(`خطأ أثناء التقديم: ${err.message}`);
+      }
+    }
+  });
+
 }
 
-// Event Listener Setup
-jobs_list.addEventListener('click', (e) => {
-  if (e.target.classList.contains('apply_btn')) {
-    const job_id = e.target.getAttribute('data-job-id');
-    try {
-      open_offer_modal(job_id);
-    } catch (err) {
-      alert(`خطأ أثناء التقديم: ${err.message}`);
-    }
-  }
-});
