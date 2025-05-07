@@ -3,6 +3,8 @@
 import { fetch_jobs } from './model.js';
 import { open_offer_modal } from './send_offer_controller.js';
 
+alert("welcome to courier view jobs");
+
 function append_send_offer_modal() {
   //TODO check if model exists to avoid appending repeatedly
   fetch("../send_offer_view.html")
@@ -23,7 +25,7 @@ if (!jobs_list) {
   append_send_offer_modal();
   jobs_list.innerHTML = '<p>جاري تحميل المهام...</p>';
 
-  await fetch_jobs()
+  fetch_jobs()
     .then(jobs => {
       jobs_list.innerHTML = '';
       jobs.forEach(job => {
