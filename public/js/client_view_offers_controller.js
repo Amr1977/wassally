@@ -19,7 +19,7 @@ function load_client_jobs_and_offers() {
             job_div.className = "job";
             job_div.innerHTML = `
                                 <h3>${job.title}</h3>
-                                <p>${job.details}</p>
+                                <p>${job.description}</p>
                                 <div id="offers_${job_id}">تحميل العروض...</div>
                                 `;
             offers_container.appendChild(job_div);
