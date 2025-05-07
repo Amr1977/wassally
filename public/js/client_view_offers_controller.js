@@ -3,7 +3,7 @@
 import { get_database, get_user_from_local_storage } from './model.js';
 
 const client_id = get_user_from_local_storage().id;
-
+const offers_container = document.getElementById("offers_container");
 
 function load_client_jobs_and_offers() {
     get_database().ref("jobs").orderByChild("client_id").equalTo(client_id).once("value", snapshot => {
@@ -29,7 +29,7 @@ function load_client_jobs_and_offers() {
 }
 
 function load_offers_for_job(job_id) {
-    const offers_div = document.getElementById(`offers_${job_id}`);    
+    const offers_div = document.getElementById(`offers_${job_id}`);
     get_database().ref(`offers/${job_id}`).once("value", snapshot => {
         offers_div.innerHTML = "";
         if (!snapshot.exists()) {
@@ -52,18 +52,14 @@ function load_offers_for_job(job_id) {
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    offers_container = document.getElementById("offers_container");
-
-    window.accept_offer = function (job_id, offer_id, courier_id) {
-        get_database().ref(`offers/${job_id}/${offer_id}/status`).set("accepted");
-        get_database().ref(`jobs/${job_id}`).update({
-            status: "assigned",
-            courierId: courier_id
-        });
-        alert("تم قبول العرض بنجاح!");
-        load_client_jobs_and_offers();
-    }
-
+window.accept_offer = function (job_id, offer_id, courier_id) {
+    get_database().ref(`offers/${job_id}/${offer_id}/status`).set("accepted");
+    get_database().ref(`jobs/${job_id}`).update({
+        status: "assigned",
+        courierId: courier_id
+    });
+    alert("تم قبول العرض بنجاح!");
     load_client_jobs_and_offers();
-});
+}
+
+load_client_jobs_and_offers();
