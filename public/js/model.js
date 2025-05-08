@@ -104,7 +104,7 @@ async function post_job(title, description, budget) {
 }
 
 async function fetch_jobs() {
-  const snapshot = firebase.database().ref('jobs').orderByChild('status').equalTo('open').once('value');
+  const snapshot = await firebase.database().ref('jobs').orderByChild('status').equalTo('open').once('value');
   const jobs = [];
 
   snapshot.forEach((child) => {
