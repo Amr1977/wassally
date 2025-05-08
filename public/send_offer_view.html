@@ -1,3 +1,4 @@
+<!-- send_offer_view.html -->
 <div id="offer_modal" style="display:none;">
   <div class="modal-content">
     <span class="close" onclick="close_offer_modal()">&times;</span>
@@ -9,8 +10,11 @@
       
       <label for="offer_message">Message to Customer:</label>
       <textarea id="offer_message" required></textarea>
-      
-      <button type="submit">Submit Offer</button>
+
+      <div style="display: flex; justify-content: space-between;">
+        <button type="submit">Submit Offer</button>
+        <button type="button" onclick="close_offer_modal()">Cancel</button>
+      </div>
     </form>
   </div>
 </div>
