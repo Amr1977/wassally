@@ -76,17 +76,21 @@ button:hover {
 @media screen and (orientation: landscape) {
   .modal-content {
       max-width: 600px;
-      max-height: 80vh;
-      padding: 30px;
+      max-height: 75vh; /* Reduce height to fit screen */
+      padding: 20px;
+      overflow: auto; /* Enable scrolling if necessary */
   }
 
+  /* Ensure button container remains visible */
   div[style="display: flex; justify-content: space-between;"] {
-      gap: 15px;
-      flex-direction: row;
+      flex-wrap: wrap; /* Allow wrapping to prevent overflow */
+      justify-content: center;
+      gap: 10px;
   }
 
   button {
-      width: 48%;
+      width: 48%; /* Adjust width to ensure buttons fit */
+      min-width: 120px; /* Prevent buttons from shrinking too much */
   }
 }
 
