@@ -5,15 +5,25 @@ import { open_offer_modal } from './send_offer_controller.js';
 
 window.alert("welcome to courier view jobs");
 
+let insert_model_flag = false;
+
 function append_send_offer_modal() {
   //TODO check if model exists to avoid appending repeatedly
   fetch("../send_offer_view.html")
     .then(response => response.text())
     .then(html => {
-      document.body.insertAdjacentHTML("beforeend", html);
+      if(!insert_model_flag) {
+        document.body.insertAdjacentHTML("beforeend", html);
+        insert_model_flag = true;
+      }
     });
 }
 
+window.onload = () => {
+  alert("welcome to courier view jobs");
+  document.body.insertAdjacentHTML("afterbegin", `<div>${document.currentScript?.src?.split('/').pop()}</div>`);
+  console.log(document.currentScript?.src?.split('/').pop());
+};
 
 window.alert("courier view jobs controller");
 append_send_offer_modal();

@@ -1,4 +1,4 @@
-import { initialize_firebase_app } from "./model";
+// send_offer_model.js
 
 class Offer {
     constructor(job_id, courier_id, offered_price, offer_message, timestamp) {
