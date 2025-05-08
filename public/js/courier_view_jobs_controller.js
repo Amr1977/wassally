@@ -3,31 +3,10 @@
 import { fetch_jobs } from './model.js';
 import { open_offer_modal } from './send_offer_controller.js';
 
-let insert_model_flag = false;
-
-function append_send_offer_modal() {
-  fetch("../send_offer_view.html")
-    .then(response => response.text())
-    .then(html => {
-      if(!insert_model_flag) {
-        document.body.insertAdjacentHTML("beforeend", html);
-        insert_model_flag = true;
-      }
-    });
-}
-
-window.onload = () => {
-  document.body.insertAdjacentHTML("afterbegin", `<div>${document.currentScript?.src?.split('/').pop()}</div>`);
-  console.log(document.currentScript?.src?.split('/').pop());
-};
-
-append_send_offer_modal();
-
 const jobs_list = document.getElementById("jobs_list");
 if (!jobs_list) {
   alert("jobs_list not found!!");
 } else {
-  append_send_offer_modal();
   jobs_list.innerHTML = '<p>جاري تحميل المهام...</p>';
 
   fetch_jobs()

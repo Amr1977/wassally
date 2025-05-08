@@ -10,8 +10,8 @@ class Offer {
     }
 }
 
-function save_offer(offer) {
-    return firebase.database().ref(`offers/${offer.job_id}`).push(offer)
+async function save_offer(offer) {
+    return await firebase.database().ref(`offers/${offer.job_id}`).push(offer)
   .then(snapshot => console.log("Offer saved!", snapshot.key))
   .catch(error => console.error("Error saving offer:", error));
 }

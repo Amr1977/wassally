@@ -1,6 +1,19 @@
 import { Offer, save_offer } from "./send_offer_model.js";
 import { get_user_from_local_storage } from "./model.js";
 
+let insert_model_flag = false;
+
+async function append_send_offer_modal() {
+  await fetch("../send_offer_view.html")
+    .then(response => response.text())
+    .then(html => {
+      if(!insert_model_flag) {
+        document.body.insertAdjacentHTML("beforeend", html);
+        insert_model_flag = true;
+      }
+    });
+}
+
 export function open_offer_modal(job_id) {
     document.getElementById("job_id").value = job_id;
     document.getElementById("offer_modal").style.display = "block";
@@ -14,6 +27,7 @@ function close_offer_modal() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    await append_send_offer_modal();
     // Attach event listener for submitting an offer
     document.getElementById("offer_form").addEventListener("submit", function (event) {
         event.preventDefault();
