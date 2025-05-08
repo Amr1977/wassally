@@ -1,7 +1,7 @@
 // courier_view_jobs_controller.js
 
 import { fetch_jobs } from './model.js';
-import { open_offer_modal } from './send_offer_controller.js';
+import { open_offer_modal, close_offer_modal } from './send_offer_controller.js';
 
 const jobs_list = document.getElementById("jobs_list");
 if (!jobs_list) {
