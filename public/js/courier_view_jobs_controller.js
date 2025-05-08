@@ -3,12 +3,9 @@
 import { fetch_jobs } from './model.js';
 import { open_offer_modal } from './send_offer_controller.js';
 
-window.alert("welcome to courier view jobs");
-
 let insert_model_flag = false;
 
 function append_send_offer_modal() {
-  //TODO check if model exists to avoid appending repeatedly
   fetch("../send_offer_view.html")
     .then(response => response.text())
     .then(html => {
@@ -20,15 +17,13 @@ function append_send_offer_modal() {
 }
 
 window.onload = () => {
-  alert("welcome to courier view jobs");
   document.body.insertAdjacentHTML("afterbegin", `<div>${document.currentScript?.src?.split('/').pop()}</div>`);
   console.log(document.currentScript?.src?.split('/').pop());
 };
 
-window.alert("courier view jobs controller");
 append_send_offer_modal();
 
-const jobs_list = document.getElementById('jobs_list');
+const jobs_list = document.getElementById("jobs_list");
 if (!jobs_list) {
   alert("jobs_list not found!!");
 } else {
