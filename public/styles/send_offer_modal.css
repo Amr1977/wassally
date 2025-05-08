@@ -10,12 +10,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
-  transition: opacity 0.3s ease-in-out;
-}
-
-#offer_modal.show {
-  opacity: 1;
 }
 
 .modal-content {
@@ -28,7 +22,6 @@
   text-align: center;
 }
 
-/* Close Button */
 .close {
   position: absolute;
   top: 10px;
@@ -37,7 +30,7 @@
   cursor: pointer;
 }
 
-/* Input Fields */
+/* Input and Button Styling */
 input, textarea {
   width: 100%;
   padding: 10px;
@@ -46,7 +39,6 @@ input, textarea {
   border-radius: 4px;
 }
 
-/* Button Styling */
 button {
   background: #28a745;
   color: white;
@@ -55,47 +47,8 @@ button {
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  width: 100%;
 }
 
 button:hover {
   background: #218838;
-}
-
-/* Cancel Button Styling */
-#offer_modal_close_button {
-  background: #d9534f;
-  color: white;
-}
-
-#offer_modal_close_button:hover {
-  background: #c9302c;
-}
-
-/* Layout Adjustments for Portrait and Landscape Views */
-@media screen and (orientation: landscape) {
-  .modal-content {
-      max-width: 600px;
-      max-height: 80vh;
-      padding: 30px;
-  }
-
-  div[style="display: flex; justify-content: space-between;"] {
-      gap: 15px;
-      flex-direction: row;
-  }
-
-  button {
-      width: 48%;
-  }
-}
-
-@media screen and (orientation: portrait) {
-  .modal-content {
-      max-width: 400px;
-  }
-
-  button {
-      width: 100%;
-  }
 }

@@ -18,14 +18,18 @@ async function append_send_offer_modal() {
 
 export function open_offer_modal(job_id) {
   document.getElementById("job_id").value = job_id;
-  document.getElementById("offer_modal").style.display = "block";
+  document.getElementById("offer_modal").classList.add("show");
+  document.getElementById("offer_modal").style.display = "flex"; // Ensure it appears
+
 }
 
 export function close_offer_modal() {
   document.getElementById("offered_price").value = ""; // Reset price field
   document.getElementById("offer_message").value = ""; // Reset message field
   document.getElementById("job_id").value = ""; // Reset job ID
-  document.getElementById("offer_modal").style.display = "none";
+  document.getElementById("offer_modal").classList.remove("show");
+  document.getElementById("offer_modal").style.display = "none"; // Hide when closed
+
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
