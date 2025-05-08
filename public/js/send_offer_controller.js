@@ -21,7 +21,7 @@ export function open_offer_modal(job_id) {
   document.getElementById("offer_modal").style.display = "block";
 }
 
-function close_offer_modal() {
+export function close_offer_modal() {
   document.getElementById("offered_price").value = ""; // Reset price field
   document.getElementById("offer_message").value = ""; // Reset message field
   document.getElementById("job_id").value = ""; // Reset job ID
@@ -49,4 +49,16 @@ function add_modal_actions() {
       close_offer_modal();
     });
   });
+  
+  //cancel button
+  document.getElementById("offer_modal_close_button").addEventListener("click", function (event){
+    close_offer_modal();
+  })
+
+  //offer_model_x_close
+  document.getElementById("offer_model_x_close").addEventListener("click", function (event){
+    close_offer_modal();
+  })
+
+
 }

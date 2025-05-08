@@ -1,7 +1,7 @@
 <!-- send_offer_view.html -->
 <div id="offer_modal" style="display:none;">
   <div class="modal-content">
-    <span class="close" onclick="close_offer_modal()">&times;</span>
+    <span class="close" id="offer_model_x_close">&times;</span>
     <h2>Send Offer</h2>
     <form id="offer_form">
       <input type="hidden" id="job_id">
@@ -13,7 +13,7 @@
 
       <div style="display: flex; justify-content: space-between;">
         <button type="submit">Submit Offer</button>
-        <button type="button" onclick="close_offer_modal()">Cancel</button>
+        <button id="offer_modal_close_button" type="button">Cancel</button>
       </div>
     </form>
   </div>
