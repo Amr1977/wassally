@@ -1,16 +1,16 @@
 // badr_delivery_platform_model.js
 // Badr Delivery Platform Model
-// This file implements order creation, bid handling, pickup/dropoff confirmation,
-// wallet transactions, fee management, and notifications for the delivery platform.
+// This file implements order creation, bid handling (with an added upfront purchase cost),
+// pickup/dropoff confirmation, wallet transactions, fee management, and notifications.
 
 // -----------------------------------------------------
 // Constants & Global Variables
 // -----------------------------------------------------
-const SYSTEM_COMMISSION_RATE = 0.10;      // 10% commission
+const SYSTEM_COMMISSION_RATE = 0.10;      // 10% commission / platform fee
 const WAITING_TIMEOUT = 300000;           // 5 minutes in milliseconds
-const CASH_BLOCK = -100;                  // If courier wallet goes below this, they see only wallet-paid orders
+const CASH_BLOCK = -100;                  // If courier wallet falls below this, they see only wallet orders
 
-// Global variables for live tracking (these may be improved later)
+// Global variables for live tracking.
 let last_location = { lat: null, lng: null };
 let last_update_time = Date.now();
 
@@ -24,27 +24,27 @@ let last_update_time = Date.now();
 function get_haversine_distance(lat1, lng1, lat2, lng2) {
   if (lat1 === null || lng1 === null || lat2 === null || lng2 === null) return Infinity;
   const to_rad = x => x * Math.PI / 180;
-  const R = 6371000; // Earth's radius in meters
+  const R = 6371000; // Earth's radius in meters.
   const d_lat = to_rad(lat2 - lat1);
   const d_lng = to_rad(lng2 - lng1);
   const a =
-    Math.sin(d_lat / 2) ** 2 +
+    Math.sin(d_lat/2) ** 2 +
     Math.cos(to_rad(lat1)) * Math.cos(to_rad(lat2)) *
-    Math.sin(d_lng / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    Math.sin(d_lng/2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return R * c;
 }
 
 /**
- * Get the fastest route information (distance in meters and duration in seconds)
- * between two points using the Google Maps Distance Matrix API.
+ * Get fastest route information (distance in meters and duration in seconds) between two points
+ * using the Google Maps Distance Matrix API.
  */
 async function get_fastest_route_info(origin, destination) {
-  const api_key = 'YOUR_API_KEY'; // Replace with your actual Google Maps API key.
+  const api_key = 'YOUR_API_KEY'; // Replace with your actual API key.
   const origin_str = `${origin.lat},${origin.lng}`;
   const destination_str = `${destination.lat},${destination.lng}`;
   const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origin_str}&destinations=${destination_str}&key=${api_key}&departure_time=now`;
-  
+
   try {
     const response = await fetch(url);
     const data = await response.json();
@@ -56,15 +56,15 @@ async function get_fastest_route_info(origin, destination) {
       data.rows[0].elements[0].status === "OK"
     ) {
       return {
-        distance: data.rows[0].elements[0].distance.value, // in meters
-        duration: data.rows[0].elements[0].duration.value  // in seconds
+        distance: data.rows[0].elements[0].distance.value,  // in meters,
+        duration: data.rows[0].elements[0].duration.value   // in seconds.
       };
     } else {
       throw new Error("API response not OK");
     }
   } catch (error) {
     console.error("Error in get_fastest_route_info:", error);
-    // Fallback: use Haversine distance with an assumed average speed of 15 m/s.
+    // Fallback calculation using Haversine distance with assumed average speed (15 m/s)
     const distance = get_haversine_distance(origin.lat, origin.lng, destination.lat, destination.lng);
     const average_speed = 15;
     const duration = distance / average_speed;
@@ -99,7 +99,7 @@ async function create_order(order_data) {
     accepted_couriers: [],
     offers: {},
     reviews: {}
-    // dropoff_estimation can be calculated later when needed.
+    // dropoff_estimation can be set later when required.
   };
   await order_ref.set(new_order);
   return order_ref.id;
@@ -107,49 +107,87 @@ async function create_order(order_data) {
 
 /**
  * Place a bid for an order.
- * Calculates:
- *   - pickup_estimation: route from courier's current location to pickup.
- *   - dropoff_estimation: route from pickup to dropoff.
- * These estimations are stored in the bid data.
+ * For wallet-paid orders, before saving the bid, we ensure that the customer's wallet has enough funds.
+ * The bid now accepts an additional parameter, upfront_purchase_cost,
+ * representing any upfront purchase cost (قيمة المشتريات إن وجدت).
+ *
+ * Parameters:
+ *   - order_id, courier_id, bid_amount, bid_message
+ *   - upfront_purchase_cost (optional; defaults to 0).
  */
-async function place_bid(order_id, courier_id, bid_amount, bid_message) {
+async function place_bid(order_id, courier_id, bid_amount, bid_message, upfront_purchase_cost = 0) {
   const order_ref = firestore.collection("orders").doc(order_id);
   const order_doc = await order_ref.get();
   if (!order_doc.exists) throw new Error("Order not found");
   const order_data = order_doc.data();
-  
+
   // Ensure dropoff_estimation exists.
   let dropoff_estimation = order_data.dropoff_estimation;
   if (!dropoff_estimation) {
     dropoff_estimation = await get_fastest_route_info(order_data.pickup_location, order_data.dropoff_location);
     await order_ref.update({ dropoff_estimation });
   }
-  
+
   // Get courier details.
   const courier_doc = await firestore.collection("users").doc(courier_id).get();
   if (!courier_doc.exists) throw new Error("Courier not found");
   const courier_data = courier_doc.data();
-  
-  // Calculate pickup_estimation from courier's current location to pickup.
+
+  // Calculate pickup_estimation from courier's current location to pickup location.
   const pickup_estimation = await get_fastest_route_info(courier_data.current_location, order_data.pickup_location);
-  
-  // Estimated cost for display (using dropoff_estimation and courier's per km rate).
+
+  // Calculate estimated distance fee from dropoff_estimation.
   const distance_km = dropoff_estimation.distance / 1000;
-  const estimated_cost = distance_km * (courier_data.fee_per_km || 0);
+  const estimated_distance_fee = distance_km * (courier_data.fee_per_km || 0);
+  // Final estimated cost now includes any upfront purchase cost.
+  const final_estimated_cost = estimated_distance_fee + Number(upfront_purchase_cost);
+
+  // Compute safety margin: 0.5 * courier.waiting_rate.
+  const safetyMargin = 0.5 * (courier_data.waiting_rate || 0);
   
+  // For wallet-paid orders, check the customer's available funds.
+  if (order_data.payment_mode && order_data.payment_mode.toLowerCase() === "wallet") {
+    // The bid's total estimated cost for the customer:
+    // (final_estimated_cost + safetyMargin) multiplied by (1 + SYSTEM_COMMISSION_RATE)
+    const total_estimated_bid_amount = (final_estimated_cost + safetyMargin) * (1 + SYSTEM_COMMISSION_RATE);
+    
+    // Retrieve the customer's wallet balance.
+    const customer_ref = firestore.collection("users").doc(order_data.customer_id);
+    const customer_doc = await customer_ref.get();
+    if (!customer_doc.exists) throw new Error("Customer not found");
+    const customer_balance = customer_doc.data().wallet_balance || 0;
+    
+    // Also, account for funds already reserved across pending orders.
+    const reserved_for_customer = await get_reserved_amount_for_customer(order_data.customer_id);
+    const availableFunds = customer_balance - reserved_for_customer;
+    
+    if (total_estimated_bid_amount > availableFunds) {
+      // Notify customer and throw error.
+      notify_customer(
+        order_data.customer_id,
+        `Bid totaling ${total_estimated_bid_amount.toFixed(2)} was blocked – insufficient wallet funds.`,
+        `تم حظر العرض بقيمة ${total_estimated_bid_amount.toFixed(2)} لعدم كفاية رصيد المحفظة.`
+      );
+      throw new Error("Bid cannot be placed: Customer wallet funds insufficient.");
+    }
+  }
+
+  // Assemble bid data.
   const bid_data = {
     bid_amount,
     bid_message,
-    pickup_estimation,    // { distance, duration } in meters and seconds.
-    dropoff_estimation,   // { distance, duration }
-    estimated_cost,
+    pickup_estimation,       // { distance, duration }
+    dropoff_estimation,      // { distance, duration }
+    estimated_distance_fee,  // Base fee computed from distance.
+    upfront_purchase_cost: Number(upfront_purchase_cost),  // Upfront purchase cost.
+    final_estimated_cost,    // (Distance fee + upfront_purchase_cost)
     timestamp: Date.now()
   };
-  
+
   await order_ref.update({
     [`offers.${courier_id}`]: bid_data
   });
-  
+
   notify_courier(
     courier_id,
     "Your bid has been placed with estimated pickup & dropoff details.",
@@ -163,91 +201,44 @@ async function place_bid(order_id, courier_id, bid_amount, bid_message) {
 }
 
 /**
- * Accept a bid from a courier.
- * Generates a unique pickup PIN and saves the courier's initial location (at acceptance time).
+ * Helper: Returns total reserved funds for a customer across all pending wallet-paid orders.
  */
-async function accept_bid(order_id, courier_id) {
-  const order_ref = firestore.collection("orders").doc(order_id);
-  const doc = await order_ref.get();
-  if (!doc.exists) throw new Error("Order not found");
-  const data = doc.data();
-  let accepted_couriers = data.accepted_couriers || [];
-  
-  if (!accepted_couriers.includes(courier_id)) {
-    accepted_couriers.push(courier_id);
-    const pickup_pin = generate_pickup_pin();
+async function get_reserved_amount_for_customer(customer_id) {
+  // Assume orders have payment_mode == 'wallet' and status in ["open", "in_progress"]
+  const ordersSnapshot = await firestore.collection("orders")
+    .where("customer_id", "==", customer_id)
+    .where("payment_mode", "==", "wallet")
+    .where("status", "in", ["open", "in_progress"]).get();
     
-    // Fetch courier document to capture current location.
-    const courier_doc = await firestore.collection("users").doc(courier_id).get();
-    if (!courier_doc.exists) throw new Error("Courier not found");
-    const courier_data = courier_doc.data();
-    const initial_location = courier_data.current_location || null;
-    
-    await order_ref.update({
-      accepted_couriers,
-      [`couriers.${courier_id}`]: {
-         pickup_pin,
-         pickup_verified: false,
-         pickup_arrival: null,
-         pickup_confirmed: false,
-         waiting_time_pickup: 0,
-         waiting_fee_pickup: 0,
-         dropoff_arrival: null,
-         dropoff_confirmed: false,
-         waiting_time_dropoff: 0,
-         waiting_fee_dropoff: 0,
-         finalized: false,
-         initial_location
-      }
-    });
-    
-    notify_courier(
-      courier_id,
-      `Your bid has been accepted. Your pickup PIN is: ${pickup_pin}`,
-      `تم قبول عرضك. رقم الاستلام الخاص بك هو: ${pickup_pin}`
-    );
+  let totalReserved = 0;
+  for (const orderDoc of ordersSnapshot.docs) {
+    totalReserved += await get_reserved_amount_for_order(orderDoc.id);
   }
-  
-  // If required number of couriers have been accepted, close bidding.
-  if (accepted_couriers.length >= data.required_couriers) {
-    await order_ref.update({ status: "in_progress", bid_expired: true });
-    // Notify non-selected couriers.
-    if (data.offers) {
-      for (const bidCourierId in data.offers) {
-        if (!accepted_couriers.includes(bidCourierId)) {
-          notify_courier(
-            bidCourierId,
-            "Your bid has expired as the order has reached the required number of couriers.",
-            "انتهى عرضك لأن الطلب بلغ العدد المطلوب من السائقين."
-          );
-        }
-      }
-    }
-    notify_customer(
-      data.customer_id,
-      "Enough couriers have been accepted. Your order is now active!",
-      "تم قبول العدد المطلوب من السائقين. طلبك الآن نشط!"
-    );
-  }
+  return totalReserved;
 }
 
 /**
- * Update the courier's current location (for live tracking).
+ * Helper: Returns reserved amount for a given order based on accepted bids.
  */
-async function update_courier_location(order_id, courier_id, lat, lng) {
-  const new_location = { lat, lng };
-  const route_distance = get_haversine_distance(last_location.lat, last_location.lng, new_location.lat, new_location.lng);
-  const time_elapsed = Date.now() - last_update_time;
-  
-  if (route_distance > 50 || time_elapsed > 60000) {
-    last_location = new_location;
-    last_update_time = Date.now();
-    await firestore.collection("orders").doc(order_id).update({
-      [`couriers.${courier_id}.current_location`]: new_location,
-      [`couriers.${courier_id}.route_history`]:
-          firebase.firestore.FieldValue.arrayUnion({ ...new_location, timestamp: Date.now() })
-    });
+async function get_reserved_amount_for_order(order_id) {
+  const orderDoc = await firestore.collection("orders").doc(order_id).get();
+  if (!orderDoc.exists) return 0;
+  const orderData = orderDoc.data();
+  let totalReserved = 0;
+  if (orderData.accepted_couriers && orderData.accepted_couriers.length > 0) {
+    for (const courierId of orderData.accepted_couriers) {
+      const bid = orderData.offers[courierId];
+      if (bid) {
+        const courierDoc = await firestore.collection("users").doc(courierId).get();
+        const courierData = courierDoc.data() || {};
+        const safetyMargin = 0.5 * (courierData.waiting_rate || 0);
+        // Reserved amount = (bid.final_estimated_cost + safetyMargin) * (1 + SYSTEM_COMMISSION_RATE)
+        const bidReserved = (bid.final_estimated_cost + safetyMargin) * (1 + SYSTEM_COMMISSION_RATE);
+        totalReserved += bidReserved;
+      }
+    }
   }
+  return totalReserved;
 }
 
 // -----------------------------------------------------
@@ -271,8 +262,7 @@ async function record_pickup_arrival(order_id, courier_id) {
 }
 
 /**
- * Confirm pickup. After uploading images and checking out at pickup,
- * calculates any additional waiting fees.
+ * Confirm pickup. Records images, vendor receipt, and calculates additional waiting fees.
  */
 async function confirm_pickup(order_id, courier_id, package_image_url, vendor_receipt_url, paid_amount) {
   const order_ref = firestore.collection("orders").doc(order_id);
@@ -289,8 +279,6 @@ async function confirm_pickup(order_id, courier_id, package_image_url, vendor_re
   const updatedData = updatedDoc.data();
   const pickup_arrival = updatedData.couriers[courier_id].pickup_arrival;
   const confirmation_time = Date.now();
-  
-  // Calculate waiting time beyond the standard timeout.
   let waiting_time = 0;
   if (confirmation_time - pickup_arrival > WAITING_TIMEOUT) {
     waiting_time = confirmation_time - pickup_arrival - WAITING_TIMEOUT;
@@ -305,7 +293,6 @@ async function confirm_pickup(order_id, courier_id, package_image_url, vendor_re
     [`couriers.${courier_id}.pickup_confirmation_time`]: confirmation_time
   });
   
-  // Calculate waiting fee (assuming courier's waiting_rate is defined).
   const courier_doc = await firestore.collection("users").doc(courier_id).get();
   if (!courier_doc.exists) throw new Error("Courier not found");
   const courier_data = courier_doc.data();
@@ -341,8 +328,7 @@ async function record_dropoff_arrival(order_id, courier_id) {
 }
 
 /**
- * Confirm dropoff. Similar to confirm_pickup, records images and receipts,
- * and calculates waiting fees if beyond the timeout.
+ * Confirm dropoff. Records images, vendor receipt, and calculates additional waiting fees if needed.
  */
 async function confirm_dropoff(order_id, courier_id, dropoff_image_url, vendor_receipt_url, paid_amount) {
   const order_ref = firestore.collection("orders").doc(order_id);
@@ -359,7 +345,6 @@ async function confirm_dropoff(order_id, courier_id, dropoff_image_url, vendor_r
   const updatedData = updatedDoc.data();
   const dropoff_arrival = updatedData.couriers[courier_id].dropoff_arrival;
   const confirmation_time = Date.now();
-  
   let waiting_time = 0;
   if (confirmation_time - dropoff_arrival > WAITING_TIMEOUT) {
     waiting_time = confirmation_time - dropoff_arrival - WAITING_TIMEOUT;
@@ -408,7 +393,7 @@ async function get_courier_wallet_balance(courier_id) {
 
 /**
  * Get the system wallet balance.
- * Assumes a single document with ID "wallet" in the "system_wallet" collection.
+ * Assumes a document with ID "wallet" in the "system_wallet" collection.
  */
 async function get_system_wallet_balance() {
   const doc = await firestore.collection("system_wallet").doc("wallet").get();
@@ -419,10 +404,8 @@ async function get_system_wallet_balance() {
 
 /**
  * Transfer the platform fee from a courier's wallet to the system wallet.
- * Deducts fee_amount from the courier and adds it to the system wallet.
  */
 async function transfer_fees_to_system_wallet(order_id, courier_id, fee_amount) {
-  // Deduct fee_amount from courier's wallet.
   const courierRef = firestore.collection("users").doc(courier_id);
   const courierDoc = await courierRef.get();
   if (!courierDoc.exists) throw new Error("Courier not found");
@@ -433,7 +416,6 @@ async function transfer_fees_to_system_wallet(order_id, courier_id, fee_amount) 
   }
   await courierRef.update({ wallet_balance: currentBalance - fee_amount });
   
-  // Add fee_amount to the system wallet.
   const systemWalletRef = firestore.collection("system_wallet").doc("wallet");
   const systemWalletDoc = await systemWalletRef.get();
   let systemBalance = 0;
@@ -442,10 +424,10 @@ async function transfer_fees_to_system_wallet(order_id, courier_id, fee_amount) 
   }
   await systemWalletRef.set({ balance: systemBalance + fee_amount }, { merge: true });
   
-  // Record the transaction.
+  // Log the transaction.
   await firestore.collection("wallet_transactions").doc(courier_id).update({
     transactions: firebase.firestore.FieldValue.arrayUnion({
-      type: "fee_transfer",
+      type: "platform_fee_transfer",
       amount: fee_amount,
       order_id: order_id,
       timestamp: Date.now()
@@ -457,15 +439,15 @@ async function transfer_fees_to_system_wallet(order_id, courier_id, fee_amount) 
 
 /**
  * Finalize the order for a courier.
- * Uses the bid data (pickup_estimation and dropoff_estimation) already stored at bid time.
+ * For wallet-paid orders, the system deducts the total customer charge from the customer's wallet,
+ * credits the courier's wallet with the full courier fee, and adds the platform fee to the system wallet.
+ *
  * Calculation:
  *   - Total route distance = pickup_estimation.distance + dropoff_estimation.distance.
  *   - distance_fee = total_distance_in_km * courierData.fee_per_km.
- *   - courier_fee = distance_fee + waiting fees.
+ *   - courier_fee = distance_fee + waiting_fee_pickup + waiting_fee_dropoff + upfront_purchase_cost.
  *   - platform_fee = SYSTEM_COMMISSION_RATE * courier_fee.
- * The courier receives the full courier_fee;
- * only the platform_fee is deducted from their wallet.
- * The customer is charged: courier_fee + platform_fee.
+ *   - total_customer_charge = courier_fee + platform_fee.
  */
 async function finalize_order(order_id, courier_id) {
   const orderRef = firestore.collection("orders").doc(order_id);
@@ -478,13 +460,13 @@ async function finalize_order(order_id, courier_id) {
   const waiting_fee_pickup = courierRecord.waiting_fee_pickup || 0;
   const waiting_fee_dropoff = courierRecord.waiting_fee_dropoff || 0;
   
-  // Retrieve the stored bid data for this courier.
+  // Retrieve bid data stored at bid time.
   const bidData = orderData.offers ? orderData.offers[courier_id] : null;
   if (!bidData) throw new Error("Bid data not found for courier");
   
-  // Total route distance = pickup_estimation.distance + dropoff_estimation.distance.
-  const pickup_distance = bidData.pickup_estimation.distance || 0;  // in meters
-  const dropoff_distance = bidData.dropoff_estimation.distance || 0;  // in meters
+  // Total route distance from stored bid estimations.
+  const pickup_distance = bidData.pickup_estimation.distance || 0;  // in meters.
+  const dropoff_distance = bidData.dropoff_estimation.distance || 0;  // in meters.
   const total_distance_m = pickup_distance + dropoff_distance;
   const distance_in_km = total_distance_m / 1000;
   
@@ -495,28 +477,71 @@ async function finalize_order(order_id, courier_id) {
   
   // Calculate distance fee.
   const distance_fee = distance_in_km * (courierData.fee_per_km || 0);
+  // Get upfront_purchase_cost from the bid data.
+  const upfront_purchase_cost = bidData.upfront_purchase_cost || 0;
   
-  // Courier fee = distance_fee + waiting fees.
-  const courier_fee = distance_fee + waiting_fee_pickup + waiting_fee_dropoff;
+  // Calculate the full courier fee.
+  const courier_fee = distance_fee + waiting_fee_pickup + waiting_fee_dropoff + Number(upfront_purchase_cost);
   
-  // Platform fee is SYSTEM_COMMISSION_RATE * courier_fee.
+  // Calculate the platform fee.
   const platform_fee = courier_fee * SYSTEM_COMMISSION_RATE;
   
   // Total customer charge.
   const total_customer_charge = courier_fee + platform_fee;
   
-  // Deduct only the platform fee from the courier's wallet.
-  const transferResult = await transfer_fees_to_system_wallet(order_id, courier_id, platform_fee);
+  // Process payment for wallet-paid orders.
+  if (orderData.payment_mode && orderData.payment_mode.toLowerCase() === "wallet") {
+    // Deduct total_customer_charge from customer's wallet.
+    const customerRef = firestore.collection("users").doc(orderData.customer_id);
+    const customerDoc = await customerRef.get();
+    if (!customerDoc.exists) throw new Error("Customer not found");
+    const customerData = customerDoc.data();
+    const customerBalance = customerData.wallet_balance || 0;
+    if (customerBalance < total_customer_charge) {
+      throw new Error("Insufficient funds in customer wallet");
+    }
+    await customerRef.update({ wallet_balance: customerBalance - total_customer_charge });
+    // Record the payment transaction.
+    await firestore.collection("wallet_transactions").doc(orderData.customer_id).update({
+      transactions: firebase.firestore.FieldValue.arrayUnion({
+        type: "order_payment",
+        amount: total_customer_charge,
+        order_id: order_id,
+        timestamp: Date.now()
+      })
+    });
+
+    // Credit the courier's wallet with the courier fee.
+    const currentCourierBalance = courierData.wallet_balance || 0;
+    await firestore.collection("users").doc(courier_id).update({
+      wallet_balance: currentCourierBalance + courier_fee
+    });
+    await firestore.collection("wallet_transactions").doc(courier_id).update({
+      transactions: firebase.firestore.FieldValue.arrayUnion({
+        type: "order_credit",
+        amount: courier_fee,
+        order_id: order_id,
+        timestamp: Date.now()
+      })
+    });
+    
+    // Add the platform fee to the system wallet.
+    await transfer_fees_to_system_wallet(order_id, courier_id, platform_fee);
+  } else {
+    // For non-wallet orders, you may follow an alternate process.
+    const transferResult = await transfer_fees_to_system_wallet(order_id, courier_id, platform_fee);
+  }
   
   // Update the order with an itemized receipt.
   await orderRef.update({
     [`couriers.${courier_id}.finalized`]: true,
     [`couriers.${courier_id}.receipt`]: {
-      distance_fee: distance_fee,               // e.g., calculated from bid estimations.
+      distance_fee: distance_fee,
       waiting_fee_pickup: waiting_fee_pickup,
       waiting_fee_dropoff: waiting_fee_dropoff,
-      courier_fee: courier_fee,                 // Total courier earnings.
-      platform_fee: platform_fee,               // Commission is 10% of courier_fee.
+      upfront_purchase_cost: Number(upfront_purchase_cost),
+      courier_fee: courier_fee,
+      platform_fee: platform_fee,
       total_customer_charge: total_customer_charge,
       finalized_at: Date.now()
     }
@@ -524,15 +549,14 @@ async function finalize_order(order_id, courier_id) {
   
   notify_courier(
     courier_id,
-    "Order finalized. You receive your full fee; only the platform commission has been deducted.",
-    "تم إنهاء الطلب. تحصل على كامل رسومك، وتم خصم عمولة المنصة من محفظتك فقط."
+    "Order finalized. Your fee has been credited and, for wallet orders, payment has been processed from the customer's wallet.",
+    "تم إنهاء الطلب. تم إضافة رسومك إلى محفظتك وتم خصم المبلغ المستحق من محفظة العميل."
   );
   
   return { 
     success: true, 
     platform_fee: platform_fee, 
-    total_customer_charge: total_customer_charge,
-    transfer: transferResult 
+    total_customer_charge: total_customer_charge
   };
 }
 
@@ -542,8 +566,6 @@ async function finalize_order(order_id, courier_id) {
 
 /**
  * Deposit funds into a customer's wallet.
- * The customer transfers money to a dedicated system smart wallet number,
- * and once received, their wallet balance is updated.
  */
 async function deposit_to_customer_wallet(customer_id, deposit_amount) {
   const customer_ref = firestore.collection("users").doc(customer_id);
@@ -552,10 +574,7 @@ async function deposit_to_customer_wallet(customer_id, deposit_amount) {
   const customer_data = customer_doc.data();
   const current_balance = customer_data.wallet_balance || 0;
   const new_balance = current_balance + deposit_amount;
-  
   await customer_ref.update({ wallet_balance: new_balance });
-  
-  // Record the deposit transaction
   await firestore.collection("wallet_transactions").doc(customer_id).update({
     transactions: firebase.firestore.FieldValue.arrayUnion({
       type: "deposit",
@@ -563,7 +582,6 @@ async function deposit_to_customer_wallet(customer_id, deposit_amount) {
       timestamp: Date.now()
     })
   });
-  
   return { success: true, new_balance };
 }
 
@@ -573,8 +591,7 @@ async function deposit_to_customer_wallet(customer_id, deposit_amount) {
 
 /**
  * Get available orders for a courier.
- * If the courier's wallet_balance is below CASH_BLOCK, only return orders
- * with payment_mode set to "wallet" (i.e., digital payment orders).
+ * If the courier's wallet_balance is below CASH_BLOCK, only return orders with payment_mode "wallet".
  */
 async function get_affordable_orders(courier_id) {
   const courier_doc = await firestore.collection("users").doc(courier_id).get();
@@ -585,18 +602,14 @@ async function get_affordable_orders(courier_id) {
   const courier_current_location = courier_data.current_location;
   const wallet_balance = courier_data.wallet_balance || 0;
   
-  // Retrieve "open" orders.
   let orders_snapshot = await firestore.collection("orders").where("status", "==", "open").get();
   let orders = orders_snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   
-  // If the courier is cash blocked (wallet_balance below CASH_BLOCK),
-  // filter orders to only those that have payment_mode "wallet".
   if (wallet_balance < CASH_BLOCK) {
     orders = orders.filter(order => order.payment_mode &&
       order.payment_mode.toLowerCase() === "wallet");
   }
   
-  // Further filtering based on budget and maximum pickup distance.
   orders = orders.filter(order => {
     if (order.needed_budget > available_budget) return false;
     if (!order.pickup_location) return false;
