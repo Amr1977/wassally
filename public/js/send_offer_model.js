@@ -8,12 +8,22 @@ class Offer {
         this.offer_message = offer_message;
         this.timestamp = timestamp;
     }
+
+    toJSON() {
+        return {
+            job_id: this.job_id,
+            courier_id: this.courier_id,
+            offered_price: this.offered_price,
+            offer_message: this.offer_message,
+            offer_time: this.timestamp
+        }
+    }
 }
 
 async function save_offer(offer) {
-    return await firebase.database().ref(`offers/${offer.job_id}`).push(offer)
-  .then(snapshot => console.log("Offer saved!", snapshot.key))
-  .catch(error => console.error("Error saving offer:", error));
+    return await firebase.database().ref(`offers/${offer.job_id}`).push(offer.toJSON)
+        .then(snapshot => console.log("Offer saved!", snapshot.key))
+        .catch(error => console.error("Error saving offer:", error));
 }
 
 export {
