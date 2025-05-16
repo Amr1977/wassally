@@ -1,0 +1,53 @@
+nohup: ignoring input
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated @babel/plugin-proposal-class-properties@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-class-properties instead.
+npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+npm warn deprecated @babel/plugin-proposal-object-rest-spread@7.20.7: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-object-rest-spread instead.
+npm warn deprecated cucumber-tag-expressions@1.1.1: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+npm warn deprecated gherkin@5.1.0: This package is now published under @cucumber/gherkin
+npm warn deprecated cucumber-expressions@5.0.18: This package is now published under @cucumber/cucumber-expressions
+npm warn deprecated cucumber-expressions@6.6.2: This package is now published under @cucumber/cucumber-expressions
+npm warn deprecated cucumber@4.2.1: Cucumber is publishing new releases under @cucumber/cucumber
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+
+> core-js@2.6.12 postinstall
+> node -e "try{require('./postinstall')}catch(e){}"
+
+Thank you for using core-js ( https://github.com/zloirock/core-js ) for polyfilling JavaScript standard library!
+
+The project needs your help! Please consider supporting of core-js on Open Collective or Patreon: 
+> https://opencollective.com/core-js 
+> https://www.patreon.com/zloirock 
+
+Also, the author of core-js ( https://github.com/zloirock ) is looking for a good job -)
+
+
+> cypress@14.3.2 postinstall
+> node index.js --exec install
+
+node:internal/modules/cjs/loader:523
+      throw err;
+      ^
+
+Error: Cannot find module '/data/data/com.termux/files/home/badr_delivery_platform/node_modules/bluebird/js/release/bluebird.js'. Please verify that the package.json has a valid "main" entry
+    at tryPackage (node:internal/modules/cjs/loader:515:19)
+    at Module._findPath (node:internal/modules/cjs/loader:800:18)
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1391:27)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1061:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1066:22)
+    at Module._load (node:internal/modules/cjs/loader:1215:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
+    at Module.require (node:internal/modules/cjs/loader:1491:12)
+    at require (node:internal/modules/helpers:135:16) {
+  code: 'MODULE_NOT_FOUND',
+  path: '/data/data/com.termux/files/home/badr_delivery_platform/node_modules/bluebird/package.json',
+  requestPath: 'bluebird'
+}
+
+Node.js v23.11.0
+npm error code 1
+npm error path /data/data/com.termux/files/home/badr_delivery_platform/node_modules/cypress
+npm error command failed
+npm error command sh -c node index.js --exec install
+npm error A complete log of this run can be found in: /data/data/com.termux/files/home/.npm/_logs/2025-05-15T23_31_25_702Z-debug-0.log

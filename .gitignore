@@ -68,3 +68,6 @@ node_modules/
 # dataconnect generated files
 .dataconnect
 files.txt
+
+# express server 
+functions/.env
