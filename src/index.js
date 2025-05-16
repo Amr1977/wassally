@@ -1,4 +1,4 @@
-// badr_delivery_platform_model.js
+// src/index.js
 // Badr Delivery Platform Model
 // -----------------------------------------------------
 // This file implements order creation, bid handling (with upfront purchase cost at order level), 
