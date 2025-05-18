@@ -7,13 +7,6 @@
 // with dynamic localization via API translation and caching.
 // -----------------------------------------------------
 
-// -----------------------------------------------------
-// Constants & Global Variables
-// -----------------------------------------------------
-const SYSTEM_COMMISSION_RATE = 0.10;      // 10% commission
-const WAITING_TIMEOUT = 300000;           // 5 minutes in milliseconds
-const CASH_BLOCK = -100;                  // If courier wallet falls below this, they see only wallet orders
-
 // Global variables for live tracking.
 let last_location = { lat: null, lng: null };
 let last_update_time = Date.now();
