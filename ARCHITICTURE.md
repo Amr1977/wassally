@@ -1,29 +1,48 @@
 # Badr Delivery Platform Architecture
 
 ## Table of Contents
+
 - [Introduction](#introduction)
+  - [Background & Motivation](#background--motivation)
 - [Overview](#overview)
 - [Module Breakdown](#module-breakdown)
   - [1. Authentication Module](#1-authentication-module)
-  - [2. Database Module](#2-database-module)
-  - [3. Logger Module](#3-logger-module)
-  - [4. Notifications Module](#4-notifications-module)
-  - [5. Orders Module](#5-orders-module)
-  - [6. OTP Module](#6-otp-module)
-  - [7. Payments Module](#7-payments-module)
-  - [8. Translation Module](#8-translation-module)
-  - [9. Utils Module](#9-utils-module)
+  - [2. Constants Module](#2-constants-module)
+  - [3. Courier Module](#3-courier-module)
+  - [4. Customer Module](#4-customer-module)
+  - [5. Database Module](#5-database-module)
+  - [6. Firebase Module](#6-firebase-module)
+  - [7. Logger Module](#7-logger-module)
+  - [8. Notifications Module](#8-notifications-module)
+  - [9. Orders Module](#9-orders-module)
+  - [10. OTP Module](#10-otp-module)
+  - [11. Payments Module](#11-payments-module)
+  - [12. Translation Module](#12-translation-module)
+  - [13. Utils Module](#13-utils-module)
+- [Hosting & Deployment](#hosting--deployment)
+- [Current Development Environment](#current-development-environment)
+  - [PWA Setup for VS Code Server](#pwa-setup-for-vs-code-server)
+- [Development Challenges & Design Decisions](#development-challenges--design-decisions)
 - [Testing & Error Tracking](#testing--error-tracking)
 - [Future Enhancements](#future-enhancements)
 - [Notes & Recommendations](#notes--recommendations)
 
+---
+
 ## Introduction
 
-**Badr Delivery Platform** (منصة بدر لأعمال الدليفري) is a delivery application inspired by real-world experience as a delivery driver. The platform is designed to evolve through MVP stages, emphasizing user-centric design, security, and scalability. This document serves as a living record of the current architecture and code modules as of today, Friday, May 16, 2025.
+**Badr Delivery Platform** (منصة بدر لأعمال الدليفري) is a delivery application inspired by real-world experience as a delivery driver. The platform is designed to evolve through MVP stages, emphasizing **user-centric design**, **security**, and **scalability**. This document serves as a **living record** of the current architecture and code modules as of today.
+
+### Background & Motivation
+
+Due to unfair work conditions present in many delivery applications—and drawing on previous experience as a **QA Engineer and iOS developer**—the decision was made to build this platform. The goal is to **ensure justice** among **couriers, customers, and the delivery system** by promoting **professional performance and operational clarity**, while preserving courier **freedom to achieve better work conditions** and maintain a **healthier work-life balance**.
+
+---
 
 ## Overview
 
-The application consists of multiple modules, each responsible for a specific aspect of the platform:
+The application consists of multiple modules, each handling a specific function of the platform:
+
 - **Authentication & Security**
 - **Order Management**
 - **Payment Processing**
@@ -31,104 +50,135 @@ The application consists of multiple modules, each responsible for a specific as
 - **OTP Handling**
 - **Logging & Error Reporting**
 
-Version control is managed via Git, and all significant changes are documented and committed regularly. Additional context and decisions are noted in this file to help guide future development.
+Version control is **managed via Git**, with detailed commit messages documenting all major changes.
+
+---
 
 ## Module Breakdown
 
 ### 1. Authentication Module
-- **Path:** `modules/authentication/authentication.js`
-- **Purpose:** Manage user authentication, login workflows, multi-factor authentication, and account recovery.
-- **Current State:** Basic authentication flows have been outlined; further details will be added as you implement additional features.
+- **Path:** `authentication/authentication.js`
+- **Purpose:** Manages user authentication, multi-factor authentication, and account recovery.
 
-### 2. Database Module
-- **Path:** `modules/database/`
-- **Purpose:** Handle interactions with the database. This module will manage queries, schema definitions, and database connections.
-- **Note:** Implementation details are pending. Consider using free-tier cloud solutions (Firebase, MongoDB Atlas, etc.) during the MVP stage.
+### 2. Constants Module
+- **Path:** `constants/constants.js`
+- **Purpose:** Stores global constants such as error codes and default values.
 
-### 3. Logger Module
-- **Path:** `modules/logger/logger.js`
-- **Purpose:** Provides centralized logging using Winston with support for both console and remote logging (e.g., Loggly).  
-- **Features:**
-  - Configurable log levels.
-  - Future integration with Sentry for error reporting.
-- **Usage:** Wrap critical operations with logging calls to monitor system behavior.
+### 3. Courier Module
+- **Path:** `courier/`
+- **Purpose:** Planned functionality for handling courier accounts, earnings tracking, and task assignment.
 
-### 4. Notifications Module
-- **Path:** `modules/notifications/notifications.js`
-- **Purpose:** Manage sending and handling notifications (push notifications, emails, etc.) for real-time updates to users.
+### 4. Customer Module
+- **Path:** `customer/customer.js`
+- **Purpose:** Manages customer details, including order history and interactions.
 
-### 5. Orders Module
-- **Path:** `modules/orders/orders.js`
-- **Purpose:** Process and manage orders, tracking their state throughout the delivery process.
+### 5. Database Module
+- **Path:** `database/`
+- **Purpose:** Handles interactions with the database, including queries and schema management.
 
-### 6. OTP Module
-This module is divided into three parts:
-- **OTP Generation**
-  - **File:** `modules/otp/otp_generator.js`
-  - **Purpose:** Generate one-time passwords (OTPs) with options for default (6-digit) or custom lengths.
-- **OTP Storage**
-  - **File:** `modules/otp/otp_storage.js`
-  - **Purpose:** In-memory storage of OTPs along with expiration timestamps, with functions to save and delete records.
-- **OTP Verification**
-  - **File:** `modules/otp/otp_verifier.js`
-  - **Purpose:** Validate OTPs against stored records, checking correctness and expiration status.
-- **Testing:** Jest tests (`tests/otp_generator.test.js`, `tests/otp_storage.test.js`, and `tests/otp_verifier.test.js`) verify these functionalities.
+### 6. Firebase Module
+- **Path:** `firebase/`
+- **Purpose:** Centralized Firebase functionality, split into submodules:
+  - `firebase_config.js` – Initializes Firebase and handles environment settings.
+  - `firebase_auth.js` – Manages Firebase authentication.
+  - `firebase_db.js` – Manages Firestore queries and real-time interactions.
+  - `firebase_storage.js` – Handles file uploads and retrieval.
+  - `firebase_functions.js` – Wrapper for Firebase Cloud Functions (if used).
 
-### 7. Payments Module
-- **Path:** `modules/payments/payments.js`
-- **Purpose:** Handle payment transactions, payment gateway integrations, and wallet functionalities.
+### 7. Logger Module
+- **Path:** `logger/logger.js`
+- **Purpose:** Provides centralized logging using **Winston**, with planned **Sentry integration**.
 
-### 8. Translation Module
-- **Path:** `modules/translation/translation.js`
-- **Purpose:** Manage language support (Arabic, English) and localization of user-facing content.
+### 8. Notifications Module
+- **Path:** `notifications/notifications.js`
+- **Purpose:** Handles **push notifications, email alerts, and real-time updates**.
 
-### 9. Utils Module
-- **Path:** `modules/utils/utils.js` (with an additional backup file `utils.js.bak`)
-- **Purpose:** A helper module containing shared functions, code utilities, and common operations used across the application.
+### 9. Orders Module
+- **Path:** `orders/orders.js`
+- **Purpose:** Manages order processing and tracking.
 
-## Testing & Error Tracking
+### 10. OTP Module
+- **Path:** `otp/`
+- **Purpose:** Handles OTP generation, storage, and verification.
+  - `otp_generator.js`
+  - `otp_storage.js`
+  - `otp_verifier.js`
 
-- **Testing Framework:**  
-  The project uses Jest for unit testing. All test files are located in the `tests/` directory.
-  
-- **Error Reporting:**  
-  - Planned integration with **Sentry** to capture exceptions and crashes.
-  - Current remote logging is implemented with **Winston** (optionally tied to Loggly).
+### 11. Payments Module
+- **Path:** `payments/payments.js`
+- **Purpose:** Handles **payment transactions**, **wallet functionalities**, and **gateway integrations**.
 
-## Future Enhancements
+### 12. Translation Module
+- **Path:** `translation/translation.js`
+- **Purpose:** Provides **multi-language support** (Arabic and English).
 
-- **Sentry Integration:**  
-  Create and connect a Sentry account for enhanced error tracking.
-- **Persistent OTP Storage:**  
-  Transition from in-memory storage to a persistent database once the MVP scales.
-- **Slack Integration & AI Custom Agent:**  
-  Consider building a custom Slack bot and long-term memory solution using frameworks like LangChain for persistent context.
-- **UI Enhancements:**  
-  Iteratively improve the front-end views to enhance user experience.
-
-## Notes & Recommendations
-
-- **Living Documentation:**  
-  Continually update this file with every significant code change, new modules, or design decisions.
-- **Version Control:**  
-  Leverage Git commit history with detailed messages to track evolution.
-- **External Memory & Summaries:**  
-  At the start of each development session, consider providing a summary of this document to any supporting AI tools you work with, ensuring continuity across sessions.
+### 13. Utils Module
+- **Path:** `utils/`
+- **Purpose:** Contains helper functions, code utilities, and common operations.
+  - `utils.js`
+  - `utils.js.bak`
 
 ---
 
-*If you have updated JavaScript files that expand on these modules, please feel welcome to share them. I can then help incorporate the latest details into this architecture document!*
+## Hosting & Deployment
 
+Originally intended to be **hosted on Firebase**, but Firebase Cloud Functions required billing activation via a **valid debit/credit card**, which was not feasible. Alternative **serverless deployment solutions** are being considered.
 
-Due to unfiar work conditions in delivery
- applications and based on a former 
-experience in software industry as 
-QA Engineer and iOS developer 
-the decision was made to build 
-a platform to achive justice between 
-couriers and customers and delivery 
-system, promoting  professional 
-performance and clarity while 
-preserving courier freedom to achive 
-a better work condition and have more 
-life balance
+---
+
+## Current Development Environment
+
+**Primary Setup:**
+- **Device:** Oppo A18 mobile
+- **OS:** Termux Ubuntu distribution
+- **Development Tools:**
+  - **VS Code Server** (Firefox for stable input handling)
+  - **Bluetooth Keyboard & Mouse app (Nokia C10 as touchpad)**
+  - **4G Internet Connection**
+
+### PWA Setup for VS Code Server
+
+- **Chrome PWA Test:** **FAILED** – Chrome reloads frequently and retains the **mouse click bug**.
+- **Firefox "Add to Home Screen" Test:** **FAILED** – It behaves like a shortcut, opening a tab that dies in the background.
+- **Next Steps:** Exploring potential workarounds or moving to a desktop development setup.
+
+---
+
+## Development Challenges & Design Decisions
+
+### Postponement of Views & Controllers
+UI development was **postponed** until the core MVP logic is finalized. This decision was made to **reduce distractions** and ensure strong foundation code before tackling UI complexities.
+
+### Environmental Challenges
+- **Unfair work conditions** make it hard to focus on development.
+- **High commission fees (~50%)** from delivery apps limit income and impact courier well-being.
+- **Heat-related bike failures** slow progress in summer months.
+- **Hardware limitations** (mobile screen size, lack of peripherals) disrupt productivity.
+
+---
+
+## Testing & Error Tracking
+
+**Testing:**  
+- **Jest Framework** for unit testing.
+- Test files stored in `tests/`.
+
+**Error Reporting:**  
+- Winston logging system.
+- Planned integration with **Sentry** for enhanced monitoring.
+
+---
+
+## Future Enhancements
+
+- **Persistent OTP storage** – Transitioning from in-memory storage to **Firestore**.
+- **Slack bot integration** – AI-assisted task tracking.
+- **UI and Controller Development** – Once MVP logic stabilizes, UI design will begin.
+
+---
+
+## Notes & Recommendations
+
+- **Regular documentation updates** – Track major decisions in this file.
+- **Peripheral solutions** – If possible, acquiring an **OTG hub with power** for better mobile functionality.
+- **Budget Optimizations** – Prioritizing **فول بالبيض** as a cost-effective meal to sustain energy.
