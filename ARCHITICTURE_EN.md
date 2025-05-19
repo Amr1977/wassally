@@ -86,7 +86,7 @@ Our system leverages a layered AI assistance model with the following roles:
 - **scheduler:** `task_scheduler.js` – Scheduled tasks (using node-cron).
 - **users:** `profile.js` – User profile management (CRUD).
 - **wallet:** `wallet_manager.js` – Wallet and fee management.
-- **index.js** – Main entry point to start the application.
+- **index.js** – Main aggregator entry point.
 
 ---
 
@@ -144,7 +144,6 @@ Our system leverages a layered AI assistance model with the following roles:
 ## Additional Modules for MVP
 
 In addition to the original 25 functions migrated into domain-specific modules, the following modules have been set up or stubbed to complete our MVP:
-
 - **Authentication & Authorization (Auth Module):** Handles login, registration, and JWT-based route protection.
 - **User Profile Management (Users Module):** Provides CRUD operations for couriers and customers.
 - **API/Route Controllers (API Module):** Exposes RESTful endpoints for authentication, orders, and workflow actions.
@@ -231,8 +230,8 @@ This section outlines our plan and schedule for Sprint 1, which will bring the M
 
 - **Maintain Modular Separation:** Continue refining and testing each module independently.
 - **Gradually Replace Stubs:** Evolve from placeholders to production-ready logic and integrate external services as needed.
-- **Consistent Naming Conventions:** Ensure that all functions and variables follow snake_case, while constants adhere to SCREAMING_SNAKE_CASE.
-- **Documentation & Testing:** Keep documentation updated and maintain a high test-coverage standard.
+- **Consistent Naming Conventions:** Ensure all functions and variables follow snake_case, while constants adhere to SCREAMING_SNAKE_CASE.
+- **Documentation & Testing:** Keep this ARCHITECTURE.md and internal documentation updated and strive for high test coverage.
 
 ---
 
@@ -246,4 +245,4 @@ This section outlines our plan and schedule for Sprint 1, which will bring the M
 
 ---
 
-This document now fully captures our architecture, including the new Sprint 1 plan. The plan is saved in the ARCH file under the "Sprint 1 – Implementation & Testing Plan" section. Let me know if you need any further changes or additions!
+This ARCH file now encapsulates our complete architecture, including our team collaboration plan, module details, sprint schedule for implementation and testing, and all change logs. Let me know if you need any further modifications or additions!
