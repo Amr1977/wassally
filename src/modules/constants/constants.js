@@ -3,6 +3,24 @@
  */
 
 /**
+ * Earth's radius in kilometers, used for distance calculations.
+ * @constant {number}
+ */
+export const R = 6371;
+
+/**
+ * Your external API key (e.g., for Google Maps).
+ * @constant {string}
+ */
+export const API_KEY = 'your_google_maps_api_key';
+
+/**
+ * Fallback average speed (in m/s) for route duration estimates.
+ * @constant {number}
+ */
+export const AVERAGE_SPEED = 1.4;
+
+/**
  * System commission rate applied to platform fees.
  * @constant {number}
  */
