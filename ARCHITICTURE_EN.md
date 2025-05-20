@@ -9,6 +9,7 @@
 - [Overview](#overview)
 - [Motivation & Background](#motivation--background)
 - [AI Agent Commands](#ai-agent-commands)
+- [Development Environment](#development-environment)
 - [Team Collaboration Plan](#team-collaboration-plan)
 - [Directory Structure (Condensed)](#directory-structure-condensed)
 - [Module Breakdown and Function Tree](#module-breakdown-and-function-tree)
@@ -42,6 +43,23 @@ Our system leverages a layered AI assistance model with the following roles:
 
 **Central Command:**
 - **SAVE:** When issued, the AI Agent outputs the current version of this ARCHITICTURE.md file, capturing all design decisions and updates.
+
+---
+
+## Development Environment
+
+The Badr Delivery Platform is being developed using a highly portable and innovative mobile setup. The primary environment is centered around an Android device that delivers the flexibility required for rapid iteration and remote access. The key components of this setup include:
+
+- **Primary Device (Oppo A18):**  
+  Utilizes Android with Termux, complemented by proot-distro running an Ubuntu environment. The VSCode server is deployed on this device to serve as the integrated development environment, allowing for efficient coding and remote editing.
+
+- **Touchpad Device (Nokia C10):**  
+  Acts as an auxiliary touchpad, providing additional control and enhanced user interaction during the development process.
+
+- **Input Device (Dell Wired USB Keyboard via OTG):**  
+  A wired Dell USB keyboard connected through an OTG adapter, ensuring a robust and responsive typing experience that supports extensive coding sessions.
+
+This mobile-centric development environment not only demonstrates resourcefulness but also highlights the adaptability of the Badr Delivery Platform in diverse hardware scenarios. It reinforces the platform's commitment to flexibility and innovation, even in constrained setups.
 
 ---
 
