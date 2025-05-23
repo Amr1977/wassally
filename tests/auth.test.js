@@ -1,5 +1,5 @@
 const request = require('supertest');
-const app = require('./auth');
+const app = require('../src/modules/auth');
 const admin = require('firebase-admin');
 const Redis = require('ioredis');
 const jwt = require('jsonwebtoken');
