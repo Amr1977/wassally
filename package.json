@@ -5,15 +5,14 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "firebase serve",
-    "test": "jest"
+    "test": "vitest"
   },
   "keywords": [],
   "author": "Amr Lotfy",
   "license": "ISC",
   "devDependencies": {
     "esbuild": "^0.17.0",
-    "jest": "^29.7.0"
+    "vitest": "^3.1.4"
   },
   "dependencies": {
     "@sentry/node": "^9.19.0",
