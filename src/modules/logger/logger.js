@@ -2,21 +2,33 @@ import fs from 'fs';
 import path from 'path';
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
+import { v4 as uuidv4 } from 'uuid';
 
 const { combine, timestamp, printf, errors, json } = winston.format;
 
-// 1. إنشاء مجلد logs لو مش موجود
+// 1. Create logs directory with secure permissions
 const logDir = 'logs';
 if (!fs.existsSync(logDir)) {
-  fs.mkdirSync(logDir, { recursive: true });
+  fs.mkdirSync(logDir, { 
+    recursive: true,
+    mode: 0o755  // Restrict write access
+  });
   console.log(`Created logs directory at: ${path.resolve(logDir)}`);
 }
 
-// 2. إعداد المتغيرات الأساسية
+// 2. Set up base variables
 const isProduction = process.env.NODE_ENV === 'production';
 const serviceName = process.env.SERVICE_NAME || 'badr-delivery';
 
-// 3. تعريف تنسيق اللوق للكونسول
+// 3. Add sensitive data redaction
+const redactFormat = winston.format((info) => {
+  if (info.message?.password) info.message.password = '[REDACTED]';
+  if (info.message?.token) info.message.token = '[REDACTED]';
+  if (info.message?.creditCard) info.message.creditCard = '[REDACTED]';
+  return info;
+});
+
+// 4. Define console log format
 const consoleFormat = printf(({ timestamp, level, message, stack, ...meta }) => {
   let log = `[${timestamp}] [${serviceName}] ${level}: ${message}`;
   if (stack) log += `\n${stack}`;
@@ -24,16 +36,17 @@ const consoleFormat = printf(({ timestamp, level, message, stack, ...meta }) => 
   return log;
 });
 
-// 4. تعريف تنسيق اللوق للملفات (json مع الطابع الزمني والأخطاء)
+// 5. Define file log format (json with timestamp and errors)
 const fileFormat = combine(
   timestamp(),
   errors({ stack: true }),
+  redactFormat(),
   json()
 );
 
-// 5. تعريف النقلات (transports) الخاصة باللوق
+// 6. Define transports
 const transports = [
-  // 5.1 النقل للكونسول مع تنسيق ملون وتعامل مع الاستثناءات والرفض
+  // Console transport with colors and exception handling
   new winston.transports.Console({
     format: combine(
       winston.format.colorize(),
@@ -44,33 +57,43 @@ const transports = [
     handleRejections: true,
   }),
 
-  // 5.2 النقل للملفات مع تدوير يومي (rotated files) - مفعلة دايمًا في جميع البيئات
+  // Daily rotated combined logs
   new DailyRotateFile({
     filename: `${logDir}/combined-%DATE%.log`,
     datePattern: 'YYYY-MM-DD',
     zippedArchive: true,
-    maxSize: '20m',
+    maxSize: '100m',
     maxFiles: '14d',
     format: fileFormat,
     level: 'info',
   }),
 
+  // Daily rotated error logs
   new DailyRotateFile({
     filename: `${logDir}/errors-%DATE%.log`,
     datePattern: 'YYYY-MM-DD',
     zippedArchive: true,
-    maxSize: '20m',
+    maxSize: '100m',
     maxFiles: '30d',
     format: fileFormat,
     level: 'error',
   }),
+
+  // Emergency transport for critical failures
+  new winston.transports.File({
+    filename: `${logDir}/emergency.log`,
+    level: 'error',
+    handleExceptions: true,
+    handleRejections: true,
+    format: fileFormat,
+  }),
 ];
 
-// 6. إنشاء مثيل Logger
+// 7. Create logger instance
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || (isProduction ? 'info' : 'debug'),
   defaultMeta: { service: serviceName },
-  format: fileFormat, // هذا التنسيق للملفات
+  format: fileFormat,
   transports,
   exceptionHandlers: [
     new winston.transports.File({
@@ -84,22 +107,39 @@ const logger = winston.createLogger({
       format: fileFormat,
     }),
   ],
+  silent: process.env.NODE_ENV === 'test', // Disable in tests
+  exitOnError: false, // Don't crash on logger errors
 });
 
-// 7. تيار للـ HTTP logging مع Express أو أي إطار ويب
+// 8. HTTP logging stream for Express
 logger.stream = {
   write: (message) => logger.http(message.trim()),
 };
 
-// 8. إضافة دالة لتسجيل لوق متعلق بالـ request لتتبع الطلبات بشكل أفضل
+// 9. Enhanced request logging with auto-generated IDs
 logger.withRequest = function (req) {
+  req.id = req.id || uuidv4(); // Auto-generate request ID if missing
   return this.child({
-    requestId: req.id || 'none',
+    requestId: req.id,
     userId: req.user?.id || 'anonymous',
     ip: req.ip,
     method: req.method,
     endpoint: req.originalUrl,
+    userAgent: req.headers['user-agent'],
   });
 };
+
+// 10. Add MongoDB transport in production if configured
+if (isProduction && process.env.MONGO_URI) {
+  const { MongoDB } = require('winston-mongodb');
+  transports.push(
+    new MongoDB({
+      db: process.env.MONGO_URI,
+      collection: 'logs',
+      level: 'info',
+      options: { useUnifiedTopology: true },
+    })
+  );
+}
 
 export default logger;
