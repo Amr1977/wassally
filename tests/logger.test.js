@@ -7,7 +7,7 @@
  * - Functionality of logger.withRequest(req)
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect} from '@jest/globals';
 import logger from '../src/modules/logger/logger.js';
 
 // Vitest tests logger structure & method existence
@@ -41,7 +41,8 @@ describe('Logger Module', () => {
       user: { id: 'user-789' },
       ip: '192.168.1.10',
       method: 'POST',
-      originalUrl: '/api/data'
+      originalUrl: '/api/data',
+      headers: { "user-agent": "Mozilla/5.0" }
     };
 
     const childLogger = logger.withRequest(mockRequest);

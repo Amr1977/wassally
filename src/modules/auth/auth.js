@@ -52,7 +52,7 @@ import Redis from 'ioredis';
 import { Firestore, FieldValue } from '@google-cloud/firestore';
 import jwt from 'jsonwebtoken';
 import admin from 'firebase-admin';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import fetch from 'node-fetch'; // For Firebase SMS REST API
 
 // ----------------------- Configuration Constants -----------------------

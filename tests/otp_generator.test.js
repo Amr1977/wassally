@@ -1,5 +1,6 @@
 // tests/otp_generator.test.js
-import { describe, it, expect } from 'vitest';
+
+import { describe, it, expect } from '@jest/globals';
 import { generate_otp } from '../src/modules/otp/otp_generator.js';
 
 describe('OTP Generation', () => {

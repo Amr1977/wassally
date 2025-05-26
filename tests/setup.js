@@ -1,10 +1,10 @@
-import { vi } from 'vitest';
+import { jest } from '@jest/globals';
 
 // Global mocks
-vi.mock('../src/logger.js', () => ({
+jest.mock('../src/logger.js', () => ({
   logger: {
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn()
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn()
   }
 }));

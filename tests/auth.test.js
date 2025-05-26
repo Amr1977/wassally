@@ -1,35 +1,35 @@
 // auth.test.js
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { EmailService, OTPService, FirebaseSmsService, AuthController } from './auth.js';
+import { describe, it, expect, beforeEach, jest, afterEach } from '@jest/globals';
+import { EmailService, OTPService, FirebaseSmsService, AuthController } from '../src/modules/auth/auth.js';
 
 // ------------------------------
 // Mocks Setup
 // ------------------------------
 
 /* ----- Nodemailer ----- */
-vi.mock('nodemailer', () => {
+jest.mock('nodemailer', () => {
   return {
-    createTransport: vi.fn().mockReturnValue({
-      sendMail: vi.fn().mockResolvedValue(true)
+    createTransport: jest.fn().mockReturnValue({
+      sendMail: jest.fn().mockResolvedValue(true)
     }),
   };
 });
 
 /* ----- Redis (ioredis) ----- */
-vi.mock('ioredis', () => {
-  return vi.fn().mockImplementation(() => ({
-    setex: vi.fn().mockResolvedValue(true),
-    del: vi.fn().mockResolvedValue(true),
+jest.mock('ioredis', () => {
+  return jest.fn().mockImplementation(() => ({
+    setex: jest.fn().mockResolvedValue(true),
+    del: jest.fn().mockResolvedValue(true),
   }));
 });
 
 /* ----- Firestore ----- */
 // Fake document for chaining calls (set, update, delete, and get).
 const fakeDoc = {
-  set: vi.fn().mockResolvedValue(true),
-  update: vi.fn().mockResolvedValue(true),
-  delete: vi.fn().mockResolvedValue(true),
-  get: vi.fn().mockResolvedValue({
+  set: jest.fn().mockResolvedValue(true),
+  update: jest.fn().mockResolvedValue(true),
+  delete: jest.fn().mockResolvedValue(true),
+  get: jest.fn().mockResolvedValue({
     exists: true,
     data: () => ({
       email: 'test@example.com',
@@ -41,24 +41,24 @@ const fakeDoc = {
 };
 
 const fakeCollection = {
-  doc: vi.fn(() => fakeDoc),
+  doc: jest.fn(() => fakeDoc),
 };
 
-vi.mock('@google-cloud/firestore', () => {
+jest.mock('@google-cloud/firestore', () => {
   return {
-    Firestore: vi.fn().mockImplementation(() => ({
-      collection: vi.fn().mockReturnValue(fakeCollection)
+    Firestore: jest.fn().mockImplementation(() => ({
+      collection: jest.fn().mockReturnValue(fakeCollection)
     })),
     FieldValue: {
-      serverTimestamp: vi.fn(),
+      serverTimestamp: jest.fn(),
     },
   };
 });
 
 /* ----- JSON Web Token (jsonwebtoken) ----- */
-vi.mock('jsonwebtoken', () => {
+jest.mock('jsonwebtoken', () => {
   return {
-    sign: vi.fn((payload, secret, options) => {
+    sign: jest.fn((payload, secret, options) => {
       // For testing, simply return a token string that includes the uid.
       return `signedToken_${payload.uid || 'no_uid'}`;
     }),
@@ -66,11 +66,11 @@ vi.mock('jsonwebtoken', () => {
 });
 
 /* ----- Firebase Admin ----- */
-vi.mock('firebase-admin', () => {
+jest.mock('firebase-admin', () => {
   return {
-    auth: vi.fn(() => ({
-      getUserByEmail: vi.fn(() => Promise.reject({ code: 'auth/user-not-found' })),
-      createUser: vi.fn(() =>
+    auth: jest.fn(() => ({
+      getUserByEmail: jest.fn(() => Promise.reject({ code: 'auth/user-not-found' })),
+      createUser: jest.fn(() =>
         Promise.resolve({
           uid: 'newUser123',
           email: 'test@example.com',
@@ -82,19 +82,19 @@ vi.mock('firebase-admin', () => {
 });
 
 /* ----- Bcrypt ----- */
-vi.mock('bcrypt', () => {
+jest.mock('bcryptjs', () => {
   return {
-    hash: vi.fn((plain, saltRounds) =>
+    hash: jest.fn((plain, saltRounds) =>
       Promise.resolve(`hashedPassword_${plain}`)
     ),
-    compare: vi.fn((plain, hash) =>
+    compare: jest.fn((plain, hash) =>
       Promise.resolve(plain === 'validPassword')
     ),
   };
 });
 
 /* ----- Node-Fetch ----- */
-vi.mock('node-fetch', () => vi.fn());
+jest.mock('node-fetch', () => jest.fn());
 
 
 /* ------------------------------
@@ -112,7 +112,7 @@ describe('EmailService', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   it('should send OTP email successfully', async () => {
@@ -141,12 +141,12 @@ describe('OTPService', () => {
 
   beforeEach(() => {
     otpService = new OTPService();
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   it('should generate dual OTPs with correct length', async () => {
     // Spy on _generateCode to return a fixed 6-digit code.
-    vi.spyOn(otpService, '_generateCode').mockReturnValue('123456');
+    jest.spyOn(otpService, '_generateCode').mockReturnValue('123456');
     const userId = 'user1';
     const email = 'test@example.com';
     const phone = '+1234567890';
@@ -167,7 +167,7 @@ describe('OTPService', () => {
       data: () => ({ email: 'test@example.com', otp_attempts: 0 }),
     });
     // Redis returns the correct OTP.
-    otpService.redis.get = vi.fn().mockResolvedValue('123456');
+    otpService.redis.get = jest.fn().mockResolvedValue('123456');
     const verified = await otpService.verifyEmailOtp('user1', '123456');
     expect(verified).toBe(true);
     // Verify cleanup was called.
@@ -180,7 +180,7 @@ describe('OTPService', () => {
       exists: true,
       data: () => ({ email: 'test@example.com', otp_attempts: 0 }),
     });
-    otpService.redis.get = vi.fn().mockResolvedValue('654321');
+    otpService.redis.get = jest.fn().mockResolvedValue('654321');
     const verified = await otpService.verifyEmailOtp('user1', '123456');
     expect(verified).toBe(false);
     expect(fakeDoc.update).toHaveBeenCalledWith({ otp_attempts: 1 });
@@ -192,15 +192,15 @@ describe('FirebaseSmsService', () => {
   let smsService;
   beforeEach(() => {
     smsService = new FirebaseSmsService();
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   it('should initiate phone verification successfully', async () => {
     // Simulate a successful fetch response with sessionInfo.
     const fakeFetchResponse = {
-      json: vi.fn().mockResolvedValue({ sessionInfo: 'session123' }),
+      json: jest.fn().mockResolvedValue({ sessionInfo: 'session123' }),
     };
-    vi.mocked(fetch).mockResolvedValueOnce(fakeFetchResponse);
+    jest.mocked(fetch).mockResolvedValueOnce(fakeFetchResponse);
     const result = await smsService.initiatePhoneVerification('+1234567890');
     expect(result).toEqual({ verificationId: 'session123' });
     expect(fetch).toHaveBeenCalled();
@@ -208,9 +208,9 @@ describe('FirebaseSmsService', () => {
 
   it('should throw an error during SMS initiation if Firebase returns error', async () => {
     const fakeFetchResponse = {
-      json: vi.fn().mockResolvedValue({ error: { message: 'Quota exceeded' } }),
+      json: jesti.fn().mockResolvedValue({ error: { message: 'Quota exceeded' } }),
     };
-    vi.mocked(fetch).mockResolvedValueOnce(fakeFetchResponse);
+    jest.mocked(fetch).mockResolvedValueOnce(fakeFetchResponse);
     await expect(smsService.initiatePhoneVerification('+1234567890')).rejects.toThrow(
       'SMS verification failed. Please try again.'
     );
@@ -218,18 +218,18 @@ describe('FirebaseSmsService', () => {
 
   it('should verify phone OTP successfully', async () => {
     const fakeFetchResponse = {
-      json: vi.fn().mockResolvedValue({ idToken: 'idToken123' }),
+      json: jest.fn().mockResolvedValue({ idToken: 'idToken123' }),
     };
-    vi.mocked(fetch).mockResolvedValueOnce(fakeFetchResponse);
+    jest.mocked(fetch).mockResolvedValueOnce(fakeFetchResponse);
     const result = await smsService.verifyPhoneOtp('session123', '123456');
     expect(result).toEqual({ verified: true, idToken: 'idToken123' });
   });
 
   it('should throw error if phone OTP verification fails', async () => {
     const fakeFetchResponse = {
-      json: vi.fn().mockResolvedValue({ error: { message: 'Invalid code' } }),
+      json: jest.fn().mockResolvedValue({ error: { message: 'Invalid code' } }),
     };
-    vi.mocked(fetch).mockResolvedValueOnce(fakeFetchResponse);
+    jest.mocked(fetch).mockResolvedValueOnce(fakeFetchResponse);
     await expect(smsService.verifyPhoneOtp('fakeSession', '000000')).rejects.toThrow(
       'SMS verification failed. Please try again.'
     );
@@ -242,22 +242,22 @@ describe('AuthController', () => {
   
   beforeEach(() => {
     authController = new AuthController();
-    vi.clearAllMocks();
+    jest.clearAllMocks();
 
     // Override OTPService.generateDualOtp to return fixed OTPs.
-    authController.otpService.generateDualOtp = vi.fn().mockResolvedValue({
+    authController.otpService.generateDualOtp = jest.fn().mockResolvedValue({
       emailOtp: '111111',
       smsOtp: '222222',
     });
     // Override EmailService.sendOTP.
-    authController.emailService.sendOTP = vi.fn().mockResolvedValue(true);
+    authController.emailService.sendOTP = jest.fn().mockResolvedValue(true);
     // Override FirebaseSmsService.verifyPhoneOtp.
-    authController.smsService.verifyPhoneOtp = vi.fn().mockResolvedValue({
+    authController.smsService.verifyPhoneOtp = jest.fn().mockResolvedValue({
       verified: true,
       idToken: 'idToken123',
     });
     // Override OTPService.verifyEmailOtp.
-    authController.otpService.verifyEmailOtp = vi.fn().mockResolvedValue(true);
+    authController.otpService.verifyEmailOtp = jest.fn().mockResolvedValue(true);
 
     // For temporary user data, ensure Firestore returns a valid user document.
     fakeDoc.get.mockResolvedValueOnce({
@@ -318,7 +318,7 @@ describe('AuthController', () => {
 
   it('should fail verification if password is invalid', async () => {
     // Override bcrypt.compare to return false for an invalid password.
-    vi.mocked(bcrypt.compare).mockResolvedValueOnce(false);
+    jest.mocked(bcryptjs.compare).mockResolvedValueOnce(false);
     await expect(
       authController.verifyRegistration(
         'tempUserId123',
