@@ -1,8 +1,9 @@
 // tests/otp_generator.test.js
-const { generate_otp } = require('../src/modules/otp/otp_generator');
+import { describe, it, expect } from 'vitest';
+import { generate_otp } from '../src/modules/otp/otp_generator.js';
 
 describe('OTP Generation', () => {
-  test('should generate a default 6-digit OTP', () => {
+  it('should generate a default 6-digit OTP', () => {
     const otp = generate_otp();
     
     // Assert the OTP is a string with length 6
@@ -14,7 +15,7 @@ describe('OTP Generation', () => {
     expect(Number.isNaN(numericOTP)).toBe(false);
   });
 
-  test('should generate OTP with a custom length', () => {
+  it('should generate OTP with a custom length', () => {
     const length = 8;
     const otp = generate_otp(length);
     

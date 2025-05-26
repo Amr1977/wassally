@@ -1,11 +1,11 @@
-// otp_verifier.js
+// src/modules/otp/otp_verifier.js
 /**
  * Verify the OTP provided by the user.
  * @param {string} input_otp - The OTP entered by the user.
  * @param {Object|null} stored_otp_obj - The stored OTP record (contains otp and expiry).
  * @returns {boolean} - Returns true if the OTP is valid and not expired; otherwise, false.
  */
-function verify_otp(input_otp, stored_otp_obj) {
+export function verify_otp(input_otp, stored_otp_obj) {
   if (!stored_otp_obj) {
     console.log("No OTP record found or OTP already used.");
     return false;
@@ -22,4 +22,5 @@ function verify_otp(input_otp, stored_otp_obj) {
   return stored_otp_obj.otp === input_otp;
 }
 
-module.exports = { verify_otp };
+// Alternative named export syntax (equivalent):
+// export { verify_otp };

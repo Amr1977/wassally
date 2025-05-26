@@ -5,20 +5,28 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "vitest"
+    "test": "vitest",
+    "coverage": "vitest run --coverage",
+    "start": "node src/index.js"
   },
   "keywords": [],
   "author": "Amr Lotfy",
   "license": "ISC",
   "devDependencies": {
     "esbuild": "^0.17.0",
-    "vitest": "^3.1.4"
+    "vitest": "^3.1.4",
+    "dotenv": "^16.0.0"
   },
   "dependencies": {
+    "@google-cloud/firestore": "^6.4.1",
     "@sentry/node": "^9.19.0",
     "firebase": "^9.23.0",
+    "firebase-admin": "^11.5.0",
+    "ioredis": "^5.3.1",
+    "nodemailer": "^6.8.0",
     "winston": "^3.17.0",
     "winston-daily-rotate-file": "^5.0.0",
-    "winston-loggly-bulk": "^3.3.2"
+    "bcrypt": "^5.1.0",
+    "node-fetch": "^3.3.1"
   }
 }

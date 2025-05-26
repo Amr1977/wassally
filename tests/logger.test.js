@@ -7,9 +7,10 @@
  * - Functionality of logger.withRequest(req)
  */
 
-const logger = require('../src/modules/logger');
+import { describe, it, expect } from 'vitest';
+import logger from '../src/modules/logger/logger.js';
 
-// Jest doesn't test actual console/file output — we focus on structure & method existence
+// Vitest tests logger structure & method existence
 describe('Logger Module', () => {
   
   // Basic existence tests
@@ -49,7 +50,6 @@ describe('Logger Module', () => {
     expect(typeof childLogger.info).toBe('function');
 
     // Metadata will not be directly exposed, but we assume it's added
-    // You can simulate usage like this:
     childLogger.info('Test log from withRequest()');
 
     // No assertion here, just confirming no error is thrown
