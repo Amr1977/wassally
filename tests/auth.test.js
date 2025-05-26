@@ -208,7 +208,7 @@ describe('FirebaseSmsService', () => {
 
   it('should throw an error during SMS initiation if Firebase returns error', async () => {
     const fakeFetchResponse = {
-      json: jesti.fn().mockResolvedValue({ error: { message: 'Quota exceeded' } }),
+      json: jest.fn().mockResolvedValue({ error: { message: 'Quota exceeded' } }),
     };
     jest.mocked(fetch).mockResolvedValueOnce(fakeFetchResponse);
     await expect(smsService.initiatePhoneVerification('+1234567890')).rejects.toThrow(
