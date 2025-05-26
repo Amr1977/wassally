@@ -497,4 +497,4 @@ export class AuthController {
   - Ensure all transport (HTTP/HTTPS) and database connections are secured with TLS/SSL.
   - Rate limiting for endpoints should be enforced at the API gateway or via dedicated middleware.
   - Integrate additional auditing and security middleware where possible.
-/
+*/
