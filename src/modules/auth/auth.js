@@ -468,6 +468,176 @@ export class AuthController {
       expiresIn: 15 * 60 // 15 minutes expressed in seconds.
     };
   }
+
+
+
+/**
+ * User Login:
+ * This function allows an existing user to login by verifying their credentials.
+ * It retrieves the user from the Firestore "users" collection, compares the provided password
+ * with the stored hashed password, and, if valid, generates JWT tokens.
+ *
+ * @param {string} email - The user's email.
+ * @param {string} plainPassword - The plaintext password.
+ * @param {string} ip - The caller's IP address for rate limiting and audit logging.
+ * @returns {Promise<Object>} - JWT tokens if login is successful.
+ */
+async login(email, plainPassword, ip) {
+  try {
+    // Enforce rate limiting based on IP.
+    await this._checkRateLimit(ip);
+    
+    // Query the "users" collection for a document matching the email.
+    const usersSnapshot = await this.firestore
+      .collection('users')
+      .where('email', '==', email)
+      .get();
+      
+    if (usersSnapshot.empty) {
+      console.warn(`Login failed: No user found with email ${email}`);
+      throw new Error('Invalid credentials');
+    }
+    
+    // Assume the email is unique and take the first matching document.
+    const userDoc = usersSnapshot.docs[0];
+    const userData = userDoc.data();
+    
+    // Compare the provided password with the stored hashed password.
+    const isValidPassword = await bcrypt.compare(plainPassword, userData.password);
+    if (!isValidPassword) {
+      console.warn(`Login failed: Incorrect password for email ${email}`);
+      throw new Error('Invalid credentials');
+    }
+    
+    // Construct a minimal user record for token generation.
+    const userRecord = {
+      uid: userData.uid,         // uid stored during registration
+      email: userData.email,
+      phoneNumber: userData.phone // Optional, since phone is optional.
+    };
+    
+    // Generate and return JWT tokens.
+    const tokens = await this._generateTokens(userRecord);
+    console.info(`Login successful for user ${userData.uid} from IP ${ip}`);
+    console.log(`Audit: User logged in with email ${email} (IP: ${ip}).`);
+    return tokens;
+    
+  } catch (error) {
+    console.error(`Login error for email ${email} from IP ${ip}: ${error.message}`);
+    throw new Error('Login failed. Please check your credentials and try again.');
+  }
+}
+
+/**
+ * Resend OTP:
+ * Allows users to request a new OTP if they haven't received it or if it has expired.
+ * It retrieves the pending verification record, generates a new OTP, stores it, and sends a new OTP via email.
+ *
+ * @param {string} userId - The temporary user identifier.
+ * @param {string} ip - The caller's IP address for rate limiting and logging.
+ * @returns {Promise<Object>} - Confirmation message indicating that a new OTP was sent.
+ */
+async resendOTP(userId, ip) {
+  try {
+    await this._checkRateLimit(ip);
+    
+    // Retrieve the pending verification record from Firestore.
+    const pendingDoc = await this.firestore.collection('pending_verifications').doc(userId).get();
+    if (!pendingDoc.exists) {
+      console.warn(`Resend OTP failed: No pending verification for user ${userId}`);
+      throw new Error('No pending OTP verification session found.');
+    }
+    const pendingData = pendingDoc.data();
+    const email = pendingData.email;
+    
+    // Generate a new OTP and update the verification record.
+    const otp = await this.otpService.generateOtp(userId, email);
+    
+    // Send the new OTP via email.
+    await this.emailService.sendOTP(email, otp);
+    
+    console.info(`Resent OTP for user ${userId} to email ${email} from IP ${ip}`);
+    console.log(`Audit: Resent OTP to ${email} for user ${userId} (IP: ${ip}).`);
+    return { success: true, message: 'A new OTP has been sent to your email.' };
+    
+  } catch (error) {
+    console.error(`Resend OTP error for user ${userId} from IP ${ip}: ${error.message}`);
+    throw new Error('Unable to resend OTP. Please try again later.');
+  }
+}
+
+/**
+ * Refresh Token:
+ * Allows users to obtain new JWT tokens using a valid refresh token.
+ * It verifies the refresh token and generates new tokens if the token is valid.
+ *
+ * @param {string} oldRefreshToken - The refresh token provided by the user.
+ * @param {string} ip - The caller's IP address for rate limiting and audit logging.
+ * @returns {Promise<Object>} - New JWT tokens upon successful refresh.
+ */
+async refreshToken(oldRefreshToken, ip) {
+  try {
+    await this._checkRateLimit(ip);
+    
+    // Verify the provided refresh token using JWT.
+    const payload = jwt.verify(oldRefreshToken, JWT_CONFIG.REFRESH_SECRET);
+    
+    // Retrieve the stored refresh token from Redis.
+    const storedToken = await this.redis.get(`refresh:${payload.uid}`);
+    if (storedToken !== oldRefreshToken) {
+      console.warn(`Refresh token mismatch for user ${payload.uid} from IP ${ip}`);
+      throw new Error('Invalid refresh token');
+    }
+    
+    // Retrieve the user record from Firestore to generate new tokens.
+    const userDoc = await this.firestore.collection('users').doc(payload.uid).get();
+    if (!userDoc.exists) {
+      console.warn(`User record not found for UID ${payload.uid} during token refresh`);
+      throw new Error('User not found');
+    }
+    const userData = userDoc.data();
+    const userRecord = {
+      uid: userData.uid,
+      email: userData.email,
+      phoneNumber: userData.phone
+    };
+    
+    // Generate and return new JWT tokens.
+    const tokens = await this._generateTokens(userRecord);
+    console.info(`Refresh token successful for user ${payload.uid} from IP ${ip}`);
+    console.log(`Audit: Token refresh for user ${payload.uid} (IP: ${ip}).`);
+    return tokens;
+    
+  } catch (error) {
+    console.error(`Refresh token error from IP ${ip}: ${error.message}`);
+    throw new Error('Token refresh failed. Please log in again.');
+  }
+}
+
+/**
+ * Logout:
+ * Revokes the user's refresh token, effectively logging them out by removing the token from Redis.
+ *
+ * @param {string} uid - The unique user identifier.
+ * @param {string} ip - The caller's IP address for audit logging.
+ * @returns {Promise<Object>} - Confirmation message indicating successful logout.
+ */
+async logout(uid, ip) {
+  try {
+    await this._checkRateLimit(ip);
+    
+    // Delete the stored refresh token for the user from Redis.
+    await this.redis.del(`refresh:${uid}`);
+    console.info(`Logout successful for user ${uid} from IP ${ip}`);
+    console.log(`Audit: User ${uid} logged out (IP: ${ip}).`);
+    return { success: true, message: 'Logged out successfully.' };
+    
+  } catch (error) {
+    console.error(`Logout error for user ${uid} from IP ${ip}: ${error.message}`);
+    throw new Error('Logout failed. Please try again.');
+  }
+}
+
 }
 
 /* ----------------------- Updated Blacklist Service with Persistence ----------------------- */

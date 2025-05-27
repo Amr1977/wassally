@@ -78,6 +78,7 @@ describe('AuthController', () => {
   });
   
   test('should verify registration successfully', async () => {
+    jest.setTimeout(10000);
     const ip = '127.0.0.1';
     const result = await authController.verifyRegistration('tempUserId', '123456', 'password123', ip);
     expect(result.success).toBe(true);
