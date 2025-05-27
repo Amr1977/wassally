@@ -1,104 +1,107 @@
 /*
-  Auth Module - Production-Ready Authentication Implementation
-  ---------------------------------------------------------------
-  This module provides the following services:
-    1. EmailService: Sends OTP codes via Gmail securely.
-    2. OTPService: Generates/verifies OTP codes using Redis and Firestore with strict attempt limits.
-    3. FirebaseSmsService: Integrates with Firebase SMS (via REST API) for secure phone verification.
-    4. AuthController: Orchestrates registration and verification flows, including secure JWT generation
-       and password handling with hashing and input validation.
-  
-  SECURITY ENHANCEMENTS:
-    - Mandatory environment variable checks to prevent insecure defaults.
-    - Simple input validation for user data (email, phone, password) using regex.
-    - JWT tokens include additional claims (issuer and audience) to secure token usage.
-    - Comments remind you to integrate additional rate limiting and secure transport (HTTPS) at a gateway level.
-    - Sensitive error logging is kept internal, and sensitive data references are cleared after use.
-  
-  Required Environment Variables:
-    - GMAIL_EMAIL, GMAIL_APP_PASSWORD  (for email service)
-    - OTP_EXPIRY (optional – defaults to 300 seconds)
-    - JWT_ACCESS_SECRET, JWT_REFRESH_SECRET, JWT_ACCESS_EXPIRY & JWT_REFRESH_EXPIRY
-    - REDIS_URL for the Redis connection
-    - FIREBASE_API_KEY for Firebase SMS verification
-    - Additionally, ensure Firebase Admin is initialized before using this module.
+  Auth Module - Updated Authentication Implementation
+  Revised based on new requirements:
+    - Removed phone SMS OTP functionality; email OTP remains.
+    - Corrected nodemailer transporter configuration.
+    - Extended environment variable fail-fast checks (including optional parameters).
+    - Implemented exponential backoff (temporary lockout) for OTP verification.
+    - Added extensive logging and audit trails for OTP attempts.
+    - Enhanced input validation using Joi (a free validation library).
 */
 
-// ----------------------- Preliminary Security Checks -----------------------
+/* ----------------------- Preliminary Security Checks & Imports ----------------------- */
 
-/**
- * Checks if all required environment variables are set.
- * Fails fast at startup if any mandatory secret/config is missing.
- */
 (function checkEnvVariables() {
+  // Required environment variables must exist for secure operation.
   const requiredEnv = [
     'GMAIL_EMAIL',
     'GMAIL_APP_PASSWORD',
     'JWT_ACCESS_SECRET',
-    'JWT_REFRESH_SECRET',
-    'FIREBASE_API_KEY'
+    'JWT_REFRESH_SECRET'
+    // Removed FIREBASE_API_KEY from required list as SMS OTP is no longer used.
+  ];
+  // Optional parameters have default values; warn if not set.
+  const optionalEnv = [
+    'OTP_EXPIRY',
+    'JWT_ACCESS_EXPIRY',
+    'JWT_REFRESH_EXPIRY',
+    'REDIS_URL'
   ];
   requiredEnv.forEach((envVar) => {
     if (!process.env[envVar]) {
       throw new Error(`Environment variable "${envVar}" is required for secure operation.`);
     }
   });
+  optionalEnv.forEach((envVar) => {
+    if (!process.env[envVar]) {
+      console.warn(`Optional environment variable "${envVar}" is not set. Using default value if applicable.`);
+    }
+  });
 })();
 
 // ----------------------- Dependencies & Imports -----------------------
 
+// Import necessary libraries and modules.
 import nodemailer from 'nodemailer';
 import Redis from 'ioredis';
 import { Firestore, FieldValue } from '@google-cloud/firestore';
 import jwt from 'jsonwebtoken';
 import admin from 'firebase-admin';
 import bcrypt from 'bcryptjs';
-import fetch from 'node-fetch'; // For Firebase SMS REST API
+import Joi from 'joi'; // Robust, free input validation library
 
 // ----------------------- Configuration Constants -----------------------
 
-const SALT_ROUNDS = 10; // Increase salt rounds for stronger password hashing if performance allows
+const SALT_ROUNDS = 10; // Number of rounds for bcrypt hashing (modify if needed).
 
 const OTP_CONFIG = {
-  EXPIRY_SECONDS: parseInt(process.env.OTP_EXPIRY) || 300, // OTP lifespan (default: 5 minutes)
-  MAX_ATTEMPTS: 3,     // Maximum allowed OTP verification attempts
-  OTP_LENGTH: 6        // Length of the OTP code
+  EXPIRY_SECONDS: parseInt(process.env.OTP_EXPIRY) || 300, // OTP lifespan (5 minutes default).
+  MAX_ATTEMPTS: 3,     // Maximum allowed OTP verification attempts.
+  OTP_LENGTH: 6        // Length of the OTP code.
 };
 
 const JWT_CONFIG = {
-  ACCESS_SECRET: process.env.JWT_ACCESS_SECRET,  // Mandatory, checked above
-  REFRESH_SECRET: process.env.JWT_REFRESH_SECRET, // Mandatory, checked above
-  ACCESS_EXPIRY: process.env.JWT_ACCESS_EXPIRY || '15m', // 15 minutes access token lifetime
-  REFRESH_EXPIRY: process.env.JWT_REFRESH_EXPIRY || '7d', // 7 days refresh token lifetime
-  ISSUER: 'BadrDeliveryAuth',                   // JWT issuer claim
-  AUDIENCE: 'BadrDeliveryUsers'                  // JWT audience claim
+  ACCESS_SECRET: process.env.JWT_ACCESS_SECRET,   // Mandatory (checked above).
+  REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,  // Mandatory (checked above).
+  ACCESS_EXPIRY: process.env.JWT_ACCESS_EXPIRY || '15m', // Default 15 minutes.
+  REFRESH_EXPIRY: process.env.JWT_REFRESH_EXPIRY || '7d', // Default 7 days.
+  ISSUER: 'BadrDeliveryAuth',                      // JWT issuer claim.
+  AUDIENCE: 'BadrDeliveryUsers'                    // JWT audience claim.
 };
 
 const REDIS_CONFIG = {
   URL: process.env.REDIS_URL || 'redis://localhost:6379'
 };
 
-// ----------------------- Utility: Input Validation -----------------------
+const LOCKOUT_BASE_DURATION = 60; // Base lockout duration (in seconds) for exponential backoff.
+
+// ----------------------- Utility: Input Validation using Joi -----------------------
 
 /**
- * Simple input validation for user registration data.
- * In production, consider using a robust validation library such as Joi.
+ * Validates user registration data using Joi.
+ * Throws an error with a descriptive message if validation fails.
  *
  * @param {Object} data - User registration data.
- * @throws {Error} If any validation fails.
  */
 function validateUserData(data) {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const phoneRegex = /^\+?\d{7,15}$/; // Basic phone number check: optional leading "+" and 7-15 digits.
-  if (!data.email || !emailRegex.test(data.email.trim())) {
-    throw new Error('A valid email is required.');
-  }
-  if (!data.phone || !phoneRegex.test(data.phone.trim())) {
-    throw new Error('A valid phone number is required.');
-  }
-  if (!data.password || data.password.length < 8) {
-    // Consider enforcing a minimum password length and complexity.
-    throw new Error('Password must be at least 8 characters long.');
+  const schema = Joi.object({
+    email: Joi.string().email().required().messages({
+      'string.email': 'Email must be a valid email address.',
+      'any.required': 'Email is required.'
+    }),
+    // Phone is now optional since SMS OTP is removed.
+    phone: Joi.string().pattern(/^\+?\d{7,15}$/).optional().messages({
+      'string.pattern.base': 'Phone must be a valid phone number with 7-15 digits.'
+    }),
+    password: Joi.string().min(8).required().messages({
+      'string.min': 'Password must be at least 8 characters long.',
+      'any.required': 'Password is required.'
+    })
+  });
+
+  const { error } = schema.validate(data);
+  if (error) {
+    throw new Error(`Validation error: ${error.message}`);
   }
 }
 
@@ -109,11 +112,12 @@ function validateUserData(data) {
  */
 export class EmailService {
   constructor() {
+    // Corrected transporter configuration with proper credential usage.
     this.transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
         user: process.env.GMAIL_EMAIL,
-        pass: process
+        pass: process.env.GMAIL_APP_PASSWORD
       }
     });
   }
@@ -133,6 +137,7 @@ export class EmailService {
         subject: 'Your OTP Code',
         html: `<p>Your verification code is: <strong>${otp}</strong></p>`
       });
+      console.info(`OTP email sent to ${email}`);
     } catch (error) {
       console.error('Email sending failed', { error });
       throw new Error('Failed to send OTP. Please try again later.');
@@ -145,6 +150,7 @@ export class EmailService {
 /**
  * OTPService generates and verifies OTP codes.
  * OTPs are stored in Redis and verification attempts are tracked in Firestore.
+ * Implements exponential backoff (temporary lockout) for repeated failed attempts.
  */
 export class OTPService {
   constructor() {
@@ -153,73 +159,88 @@ export class OTPService {
   }
 
   /**
-   * Generates dual OTPs (one for email, one for SMS) and stores them.
+   * Generates an email OTP and stores it in Redis.
    *
    * @param {string} userId - Unique user identifier.
    * @param {string} email - User's email.
-   * @param {string} phone - User's phone number.
-   * @returns {Promise<Object>} Object containing both emailOtp and smsOtp.
+   * @returns {Promise<string>} The generated email OTP.
    */
-  async generateDualOtp(userId, email, phone) {
-    const emailOtp = this._generateCode();
-    const smsOtp = this._generateCode();
-
-    await Promise.all([
-      this.redis.setex(`otp:email:${email}`, OTP_CONFIG.EXPIRY_SECONDS, emailOtp),
-      this.redis.setex(`otp:phone:${phone}`, OTP_CONFIG.EXPIRY_SECONDS, smsOtp),
-      this._storeVerificationRecord(userId, email, phone)
-    ]);
-
-    return { emailOtp, smsOtp };
+  async generateOtp(userId, email) {
+    const otp = this._generateCode();
+    
+    // Store OTP in Redis with an expiry.
+    await this.redis.setex(`otp:email:${email}`, OTP_CONFIG.EXPIRY_SECONDS, otp);
+    
+    // Create a pending verification record in Firestore with initial attempt count.
+    await this.firestore.collection('pending_verifications').doc(userId).set({
+      email,
+      created_at: FieldValue.serverTimestamp(),
+      otp_attempts: 0,
+      lockedUntil: null
+    });
+    
+    console.info(`Generated OTP for user ${userId} and email ${email}`);
+    // Audit trail log for OTP generation.
+    console.log(`Audit: OTP generated for user (${userId}, email: ${email}).`);
+    return otp;
   }
 
   /**
-   * Verifies the email OTP.
+   * Verifies the email OTP provided by the user.
+   * Implements exponential backoff for lockout if too many failed attempts.
    *
    * @param {string} userId - The user identifier.
-   * @param {string} otp - The OTP provided.
-   * @returns {Promise<boolean>} True if verified, false otherwise.
+   * @param {string} otp - The OTP provided by the user.
+   * @returns {Promise<boolean>} True if verification is successful, false otherwise.
    */
   async verifyEmailOtp(userId, otp) {
-    const doc = await this.firestore.collection('pending_verifications').doc(userId).get();
-    if (!doc.exists) return false;
+    const docSnap = await this.firestore.collection('pending_verifications').doc(userId).get();
+    if (!docSnap.exists) {
+      console.warn(`Pending verification record not found for user ${userId}`);
+      return false;
+    }
 
-    const { email, otp_attempts = 0 } = doc.data();
-    if (otp_attempts >= OTP_CONFIG.MAX_ATTEMPTS) {
-      await this._cleanupOtp(userId, email);
+    const data = docSnap.data();
+    const email = data.email;
+    let attempts = data.otp_attempts || 0;
+    let lockedUntil = data.lockedUntil;
+    const now = Date.now();
+
+    // Check lockout condition.
+    if (lockedUntil && now < lockedUntil) {
+      console.warn(`OTP verification for email ${email} blocked due to temporary lockout until ${new Date(lockedUntil).toISOString()}`);
+      console.log(`Audit: OTP attempt blocked for user ${userId} (email: ${email}) due to lockout.`);
       return false;
     }
 
     const storedOtp = await this.redis.get(`otp:email:${email}`);
     if (storedOtp !== otp) {
-      await this.firestore.collection('pending_verifications').doc(userId)
-        .update({ otp_attempts: otp_attempts + 1 });
+      attempts += 1;
+      // If maximum attempts are reached or exceeded, calculate lockout duration using exponential backoff.
+      if (attempts >= OTP_CONFIG.MAX_ATTEMPTS) {
+        const lockoutSeconds = LOCKOUT_BASE_DURATION * Math.pow(2, attempts - OTP_CONFIG.MAX_ATTEMPTS);
+        lockedUntil = now + lockoutSeconds * 1000;
+        console.warn(`OTP verification for email ${email} exceeded maximum attempts. Locking out until ${new Date(lockedUntil).toISOString()}`);
+      }
+      // Update Firestore record with updated attempt count and lockout time if applicable.
+      await this.firestore.collection('pending_verifications').doc(userId).update({ otp_attempts: attempts, lockedUntil });
+      
+      // Audit log for a failed OTP attempt.
+      console.log(`Audit: Failed OTP attempt ${attempts} for user (${userId}, email: ${email}).`);
       return false;
     }
 
+    // Successful verification; log audit trail.
+    console.info(`OTP verified successfully for email ${email}`);
+    console.log(`Audit: Successful OTP verification for user (${userId}, email: ${email}).`);
+    
+    // Cleanup OTP and pending verification record.
     await this._cleanupOtp(userId, email);
     return true;
   }
 
   /**
-   * Stores a verification record in Firestore.
-   *
-   * @param {string} userId - User identifier.
-   * @param {string} email - User's email.
-   * @param {string} phone - User's phone.
-   * @returns {Promise<void>}
-   */
-  async _storeVerificationRecord(userId, email, phone) {
-    await this.firestore.collection('pending_verifications').doc(userId).set({
-      email,
-      phone,
-      created_at: FieldValue.serverTimestamp(),
-      otp_attempts: 0
-    });
-  }
-
-  /**
-   * Cleans up OTP and verification record.
+   * Cleans up OTP data stored in Redis and the pending verification record in Firestore.
    *
    * @param {string} userId - User identifier.
    * @param {string} email - User's email.
@@ -230,12 +251,13 @@ export class OTPService {
       this.redis.del(`otp:email:${email}`),
       this.firestore.collection('pending_verifications').doc(userId).delete()
     ]);
+    console.info(`Cleaned up OTP data for user ${userId} and email ${email}`);
   }
 
   /**
-   * Generates a numerical OTP with fixed length.
+   * Generates a numerical OTP with a fixed length.
    *
-   * @returns {string} OTP code.
+   * @returns {string} The numerical OTP code.
    */
   _generateCode() {
     return Math.floor(
@@ -243,99 +265,58 @@ export class OTPService {
       Math.random() * 9 * Math.pow(10, OTP_CONFIG.OTP_LENGTH - 1)
     ).toString();
   }
-}
-
-// ----------------------- Firebase SMS Service -----------------------
-
-/**
- * FirebaseSmsService integrates with Firebase's Identity Toolkit REST API
- * to initiate and verify phone-based OTP authentication.
- */
-export class FirebaseSmsService {
-  /**
-   * Initiates phone verification by sending an SMS via Firebase.
-   *
-   * @param {string} phoneNumber - The phone number to verify.
-   * @returns {Promise<Object>} Object containing the verificationId (sessionInfo).
-   */
-  async initiatePhoneVerification(phoneNumber) {
-    const apiKey = process.env.FIREBASE_API_KEY;
-    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phoneNumber })
-    });
-    
-    const data = await response.json();
-    if (data.error) {
-      console.error('Firebase SMS initiation error:', data.error);
-      throw new Error('SMS verification failed. Please try again.');
-    }
-    
-    console.info(`Firebase SMS verification initiated for ${phoneNumber}`);
-    return { verificationId: data.sessionInfo };
-  }
-
-  /**
-   * Verifies the OTP code for phone verification.
-   *
-   * @param {string} verificationId - The verification ID received.
-   * @param {string} otp - The OTP provided by the user.
-   * @returns {Promise<Object>} Object with verification status and idToken if available.
-   */
-  async verifyPhoneOtp(verificationId, otp) {
-    const apiKey = process.env.FIREBASE_API_KEY;
-    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionInfo: verificationId,
-        code: otp
-      })
-    });
-    
-    const data = await response.json();
-    if (data.error) {
-      console.error('Firebase SMS verification error:', data.error);
-      throw new Error('SMS verification failed. Please try again.');
-    }
-    
-    return { verified: true, idToken: data.idToken };
-  }
-}
-
-// ----------------------- Auth Controller -----------------------
+}/* ----------------------- Auth Controller ----------------------- */
 
 /**
  * AuthController orchestrates user registration and OTP verification securely.
- * It integrates EmailService, OTPService, and FirebaseSmsService.
- * Additional enforcements include:
- *   - Input validation for registration data.
- *   - Password hashing with bcrypt.
- *   - Extra JWT claims (issuer and audience) for token security.
+ * It integrates EmailService and OTPService, implements rate limiting, and logs detailed audit information.
  */
 export class AuthController {
   constructor() {
     this.otpService = new OTPService();
     this.emailService = new EmailService();
-    this.smsService = new FirebaseSmsService();
-    this.redis = new Redis(REDIS_CONFIG.URL);
+    this.redis = new Redis(REDIS_CONFIG.URL); // Used for storing JWT refresh tokens & rate limiting metadata.
     this.firestore = new Firestore();
   }
-
+  
+  /**
+   * Internal method to check rate limiting based on the caller's IP.
+   *
+   * @param {string} ip - Caller IP address.
+   * @returns {Promise<void>}
+   * @throws {Error} When the rate limit is exceeded.
+   */
+  async _checkRateLimit(ip) {
+    const RATE_LIMIT = 100; // Maximum requests allowed per minute per IP.
+    const RATE_LIMIT_WINDOW = 60; // Window in seconds.
+    const key = `rate:${ip}`;
+    const requests = await this.redis.incr(key);
+    if (requests === 1) {
+      await this.redis.expire(key, RATE_LIMIT_WINDOW);
+    }
+    if (requests > RATE_LIMIT) {
+      console.warn(`Rate limit exceeded for IP ${ip}. Request count: ${requests}.`);
+      throw new Error('Too many requests. Please try again later.');
+    }
+  }
+  
   /**
    * Initiates registration by validating input, hashing the password,
-   * creating a temporary user record, and sending OTP codes.
+   * creating a temporary user record, and sending an email OTP.
    *
-   * @param {Object} userData - Registration data (must include email, phone, password, etc.)
-   * @returns {Promise<Object>} Object detailing next steps.
+   * @param {Object} userData - Registration data (must include email, phone, password etc.).
+   * @param {string} ip - Caller IP address for rate limiting and audit logging.
+   * @returns {Promise<Object>} An object detailing the next steps.
    */
-  async initiateRegistration(userData) {
+  async initiateRegistration(userData, ip) {
     try {
-      // Validate input data.
+      // Rate limiting check.
+      await this._checkRateLimit(ip);
+      
+      // Validate input data using Joi-based validation.
       validateUserData(userData);
 
-      // Check if the email is already registered.
+      // Check if the email is already registered in Firebase Auth.
       try {
         await admin.auth().getUserByEmail(userData.email);
         throw new Error('Email already in use');
@@ -346,26 +327,24 @@ export class AuthController {
       // Hash the user's password using bcrypt.
       const plainPassword = userData.password;
       const hashedPassword = await bcrypt.hash(plainPassword, SALT_ROUNDS);
-      userData.password = hashedPassword; // Replace plaintext with hashed password.
+      userData.password = hashedPassword; // Replace plaintext with the hashed password.
 
       // Create a temporary user record in Firestore (temp_users collection).
       const userRef = this.firestore.collection('temp_users').doc();
       await userRef.set({
         ...userData,
         created_at: FieldValue.serverTimestamp(),
-        status: 'pending_verification',
-        otp_attempts: 0
+        status: 'pending_verification'
       });
 
-      // Generate dual OTP codes for email and SMS.
-      const { emailOtp } = await this.otpService.generateDualOtp(
-        userRef.id,
-        userData.email,
-        userData.phone
-      );
+      // Generate email OTP for verification.
+      const emailOtp = await this.otpService.generateOtp(userRef.id, userData.email);
 
       // Send the email OTP.
       await this.emailService.sendOTP(userData.email, emailOtp);
+
+      console.info(`Registration initiated for email ${userData.email} from IP ${ip}`);
+      console.log(`Audit: Initiated registration for user ${userRef.id} (email: ${userData.email}, IP: ${ip}).`);
 
       return {
         success: true,
@@ -374,66 +353,63 @@ export class AuthController {
         message: 'OTP sent to email'
       };
     } catch (error) {
-      console.error(`Registration failed: ${error.message}`);
-      // Do not return detailed error info to the client.
+      console.error(`Registration failed for IP ${ip}: ${error.message}`);
       throw new Error('Registration failed. Please try again.');
     }
   }
 
   /**
-   * Verifies OTPs and the user's password.
-   * On success, creates a Firebase user, sets up a profile, and generates JWT tokens.
+   * Verifies the OTP and the user's password.
+   * On success, creates a Firebase user record, stores their profile,
+   * and generates JWT tokens.
    *
    * @param {string} userId - The temporary user ID.
    * @param {string} emailOtp - OTP sent via email.
-   * @param {string} smsOtp - OTP sent via SMS.
-   * @param {string} verificationId - Verification ID from SMS service.
    * @param {string} plainPassword - The user's plaintext password (re-entered).
-   * @returns {Promise<Object>} Object containing tokens and new user ID.
+   * @param {string} ip - Caller IP address for rate limiting and audit logging.
+   * @returns {Promise<Object>} An object containing tokens and the new user ID.
    */
-  async verifyRegistration(userId, emailOtp, smsOtp, verificationId, plainPassword) {
+  async verifyRegistration(userId, emailOtp, plainPassword, ip) {
     try {
-      // Verify the SMS OTP.
-      const smsVerification = await this.smsService.verifyPhoneOtp(verificationId, smsOtp);
-      if (!smsVerification.verified) {
-        throw new Error('Invalid SMS OTP');
-      }
+      // Rate limiting check.
+      await this._checkRateLimit(ip);
 
       // Verify the email OTP.
       const emailVerified = await this.otpService.verifyEmailOtp(userId, emailOtp);
       if (!emailVerified) {
+        console.warn(`Email OTP verification failed for user ${userId} from IP ${ip}`);
         throw new Error('Invalid email OTP');
       }
 
-      // Retrieve the temporary user record.
+      // Retrieve the temporary user record from Firestore.
       const userDoc = await this.firestore.collection('temp_users').doc(userId).get();
       if (!userDoc.exists) {
+        console.warn(`Temporary user record not found for userId ${userId} from IP ${ip}`);
         throw new Error('Invalid verification session');
       }
       const tempUserData = userDoc.data();
 
-      // Verify that the re-entered password matches the stored hash.
+      // Verify the re-entered password against the stored hashed password.
       const isPasswordValid = await bcrypt.compare(plainPassword, tempUserData.password);
       if (!isPasswordValid) {
+        console.warn(`Password verification failed for user ${userId} from IP ${ip}`);
         throw new Error('Invalid password');
       }
 
-      // Clear sensitive plaintext reference immediately.
-      // In Node, explicit memory handling is limited but we null the variable as a precaution.
-      // eslint-disable-next-line no-param-reassign
-      plainPassword = null;
-
-      // Create the Firebase user with the plaintext (which will be hashed internally by Firebase).
+      // Create the Firebase user using the plaintext password.
+      // Firebase will internally hash the password.
       const userRecord = await admin.auth().createUser({
         email: tempUserData.email,
-        phoneNumber: tempUserData.phone,
-        password: plainPassword, // Typically, recreate using the original plaintext;
-                                  // Here, it's passed as an argument before it’s nulled.
+        phoneNumber: tempUserData.phone, // Optional since SMS OTP is removed.
+        password: plainPassword,
         displayName: `${tempUserData.first_name || ''} ${tempUserData.last_name || ''}`.trim(),
         emailVerified: true
       });
 
-      // Store the user's profile in Firestore.
+      // Now that the password has been used, clear the sensitive plaintext.
+      plainPassword = null;
+
+      // Store the user's profile in Firestore (permanent user record).
       await this.firestore.collection('users').doc(userRecord.uid).set({
         ...tempUserData,
         uid: userRecord.uid,
@@ -444,8 +420,11 @@ export class AuthController {
       // Clean up the temporary user record.
       await this.firestore.collection('temp_users').doc(userId).delete();
 
-      // Generate JWT tokens.
+      // Generate JWT tokens for the newly created user.
       const tokens = await this._generateTokens(userRecord);
+
+      console.info(`User ${userRecord.uid} verified and created successfully from IP ${ip}`);
+      console.log(`Audit: Successful registration for user ${userRecord.uid} (email: ${tempUserData.email}, IP: ${ip}).`);
 
       return {
         success: true,
@@ -453,25 +432,24 @@ export class AuthController {
         ...tokens
       };
     } catch (error) {
-      console.error(`Verification failed: ${error.message}`);
+      console.error(`Verification failed for user ${userId} from IP ${ip}: ${error.message}`);
       throw new Error('Verification failed. Please try again.');
     }
   }
 
   /**
    * Generates JWT access and refresh tokens for an authenticated user.
-   * Includes additional claims (issuer, audience) for stronger security.
    *
    * @param {Object} userRecord - The Firebase user record.
-   * @returns {Promise<Object>} Object containing tokens and expiry.
+   * @returns {Promise<Object>} An object containing accessToken, refreshToken, and expiry information.
    */
   async _generateTokens(userRecord) {
     const payload = {
       uid: userRecord.uid,
       email: userRecord.email,
       phone: userRecord.phoneNumber,
-      iss: JWT_CONFIG.ISSUER,  // Issuer claim
-      aud: JWT_CONFIG.AUDIENCE // Audience claim
+      iss: JWT_CONFIG.ISSUER,  // Issuer claim.
+      aud: JWT_CONFIG.AUDIENCE // Audience claim.
     };
 
     const accessToken = jwt.sign(payload, JWT_CONFIG.ACCESS_SECRET, {
@@ -481,20 +459,122 @@ export class AuthController {
       expiresIn: JWT_CONFIG.REFRESH_EXPIRY
     });
 
-    // Store the refresh token in Redis (expires in 7 days).
+    // Store the refresh token in Redis (e.g., with a 7-day expiry).
     await this.redis.setex(`refresh:${userRecord.uid}`, 7 * 24 * 60 * 60, refreshToken);
 
     return {
       accessToken,
       refreshToken,
-      expiresIn: 15 * 60 // 15 minutes in seconds
+      expiresIn: 15 * 60 // 15 minutes expressed in seconds.
     };
   }
 }
 
-/*
-  NOTES:
-  - Ensure all transport (HTTP/HTTPS) and database connections are secured with TLS/SSL.
-  - Rate limiting for endpoints should be enforced at the API gateway or via dedicated middleware.
-  - Integrate additional auditing and security middleware where possible.
-*/
+/* ----------------------- Updated Blacklist Service with Persistence ----------------------- */
+
+/**
+ * BlacklistService manages blacklisting of IP addresses and user identifiers (email/phone).
+ * It checks if an IP is blacklisted (via Redis) and adds connection info to the blacklist.
+ * The blacklist is stored both in Redis for fast runtime checks and in Firestore for persistence.
+ */
+export class BlacklistService {
+  constructor() {
+    this.redis = new Redis(REDIS_CONFIG.URL);
+    this.firestore = new Firestore();
+    // The runtime blacklist is maintained in Redis (e.g., the "blacklisted_ips" set).
+    // Persistent blacklist data is saved in a Firestore collection named "persistent_blacklists".
+  }
+
+  /**
+   * Checks if the given IP address is in the blacklist (stored in Redis).
+   *
+   * @param {string} ip - The IP address to check.
+   * @returns {Promise<boolean>} True if the IP is blacklisted, otherwise false.
+   */
+  async isIPBlacklisted(ip) {
+    const isBlacklisted = await this.redis.sismember('blacklisted_ips', ip);
+    if (isBlacklisted) {
+      console.warn(`Connection attempt from blacklisted IP: ${ip}`);
+    }
+    return isBlacklisted === 1;
+  }
+
+  /**
+   * Adds a user's connection info (email, phone, ip) to the blacklist.
+   * If the same email or phone is associated with multiple IPs, all those IPs are
+   * added to the runtime blacklist and persisted to Firestore.
+   *
+   * @param {Object} userInfo - Contains connection data.
+   * @param {string} userInfo.email - The user's email.
+   * @param {string} [userInfo.phone] - The user's phone number (optional).
+   * @param {string} userInfo.ip - The IP address from which the user connected.
+   * @returns {Promise<void>}
+   */
+  async addUserToBlacklist({ email, phone, ip }) {
+    // Store connection info in Redis sets mapping each identifier to its IPs.
+    const emailKey = `blacklist:email:${email}`;
+    await this.redis.sadd(emailKey, ip);
+
+    if (phone) {
+      const phoneKey = `blacklist:phone:${phone}`;
+      await this.redis.sadd(phoneKey, ip);
+    }
+
+    // Check if the email (or phone) is associated with multiple IPs.
+    const emailIPs = await this.redis.smembers(emailKey);
+    if (emailIPs.length > 1) {
+      await Promise.all(emailIPs.map(existingIp => this.redis.sadd('blacklisted_ips', existingIp)));
+      console.warn(`Email ${email} is associated with multiple IPs. Blacklisting IPs: ${emailIPs.join(', ')}`);
+      console.log(`Audit: Blacklisted IPs for email ${email}: ${emailIPs.join(', ')}`);
+    }
+
+    if (phone) {
+      const phoneIPs = await this.redis.smembers(`blacklist:phone:${phone}`);
+      if (phoneIPs.length > 1) {
+        await Promise.all(phoneIPs.map(existingIp => this.redis.sadd('blacklisted_ips', existingIp)));
+        console.warn(`Phone ${phone} is associated with multiple IPs. Blacklisting IPs: ${phoneIPs.join(', ')}`);
+        console.log(`Audit: Blacklisted IPs for phone ${phone}: ${phoneIPs.join(', ')}`);
+      }
+    }
+
+    // Add the current IP to the global runtime blacklist.
+    await this.redis.sadd('blacklisted_ips', ip);
+    console.info(`User with email ${email} ${phone ? `(and phone ${phone})` : ''} from IP ${ip} added to runtime blacklist.`);
+
+    // Persist the blacklist data in Firestore.
+    try {
+      // Use the IP as the document ID in the "persistent_blacklists" collection.
+      const docRef = this.firestore.collection('persistent_blacklists').doc(ip);
+      const docSnap = await docRef.get();
+
+      if (docSnap.exists) {
+        // Merge new data with existing persistent record.
+        const existingData = docSnap.data();
+        const updatedEmails = new Set(existingData.emails || []);
+        updatedEmails.add(email);
+
+        let updatedPhones = new Set(existingData.phones || []);
+        if (phone) {
+          updatedPhones.add(phone);
+        }
+        await docRef.update({
+          emails: Array.from(updatedEmails),
+          phones: Array.from(updatedPhones),
+          updated_at: FieldValue.serverTimestamp()
+        });
+        console.info(`Updated persistent blacklist record for IP ${ip} in Firestore.`);
+      } else {
+        // Create a new persistent blacklist record.
+        await docRef.set({
+          ip,
+          emails: [email],
+          phones: phone ? [phone] : [],
+          created_at: FieldValue.serverTimestamp()
+        });
+        console.info(`Created persistent blacklist record for IP ${ip} in Firestore.`);
+      }
+    } catch (err) {
+      console.error("Failed to persist blacklist to Firestore", err);
+    }
+  }
+}
