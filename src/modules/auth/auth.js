@@ -185,59 +185,75 @@ export class OTPService {
     return otp;
   }
 
-  /**
-   * Verifies the email OTP provided by the user.
-   * Implements exponential backoff for lockout if too many failed attempts.
-   *
-   * @param {string} userId - The user identifier.
-   * @param {string} otp - The OTP provided by the user.
-   * @returns {Promise<boolean>} True if verification is successful, false otherwise.
-   */
-  async verifyEmailOtp(userId, otp) {
-    const docSnap = await this.firestore.collection('pending_verifications').doc(userId).get();
-    if (!docSnap.exists) {
+/**
+ * Verifies the email OTP provided by the user.
+ * Implements exponential backoff for lockout if too many failed attempts.
+ *
+ * @param {string} userId - The user identifier.
+ * @param {string} otp - The OTP provided by the user.
+ * @returns {Promise<boolean>} True if verification is successful, false otherwise.
+ */
+async verifyEmailOtp(userId, otp) {
+  try {
+    console.trace("Entering verifyEmailOtp");
+    
+    // Fetch the pending verification document.
+    const pendingDoc = await this.firestore
+      .collection('pending_verifications')
+      .doc(userId)
+      .get();
+    console.trace("Fetched pending_verifications doc", pendingDoc.exists);
+    
+    if (!pendingDoc.exists) {
       console.warn(`Pending verification record not found for user ${userId}`);
       return false;
     }
-
-    const data = docSnap.data();
+    
+    const data = pendingDoc.data();
     const email = data.email;
     let attempts = data.otp_attempts || 0;
     let lockedUntil = data.lockedUntil;
     const now = Date.now();
-
-    // Check lockout condition.
+    
+    // Check for an ongoing lockout period.
     if (lockedUntil && now < lockedUntil) {
-      console.warn(`OTP verification for email ${email} blocked due to temporary lockout until ${new Date(lockedUntil).toISOString()}`);
-      console.log(`Audit: OTP attempt blocked for user ${userId} (email: ${email}) due to lockout.`);
+      console.warn(`OTP verification blocked for ${email} because of lockout until ${new Date(lockedUntil).toISOString()}`);
       return false;
     }
-
+    
+    console.trace(`Before calling redis.get() for key otp:email:${email}`);
     const storedOtp = await this.redis.get(`otp:email:${email}`);
+    console.trace(`Redis returned OTP: ${storedOtp}`);
+    
+    // Compare the OTP.
     if (storedOtp !== otp) {
       attempts += 1;
-      // If maximum attempts are reached or exceeded, calculate lockout duration using exponential backoff.
       if (attempts >= OTP_CONFIG.MAX_ATTEMPTS) {
         const lockoutSeconds = LOCKOUT_BASE_DURATION * Math.pow(2, attempts - OTP_CONFIG.MAX_ATTEMPTS);
         lockedUntil = now + lockoutSeconds * 1000;
-        console.warn(`OTP verification for email ${email} exceeded maximum attempts. Locking out until ${new Date(lockedUntil).toISOString()}`);
+        console.warn(`Exceeded max attempts for ${email}. Locking out until ${new Date(lockedUntil).toISOString()}`);
       }
-      // Update Firestore record with updated attempt count and lockout time if applicable.
-      await this.firestore.collection('pending_verifications').doc(userId).update({ otp_attempts: attempts, lockedUntil });
-      
-      // Audit log for a failed OTP attempt.
-      console.log(`Audit: Failed OTP attempt ${attempts} for user (${userId}, email: ${email}).`);
+      console.trace("Updating pending_verifications document with attempts:", attempts, "lockedUntil:", lockedUntil);
+      await this.firestore.collection('pending_verifications').doc(userId).update({
+        otp_attempts: attempts,
+        lockedUntil
+      });
       return false;
     }
-
-    // Successful verification; log audit trail.
-    console.info(`OTP verified successfully for email ${email}`);
-    console.log(`Audit: Successful OTP verification for user (${userId}, email: ${email}).`);
     
-    // Cleanup OTP and pending verification record.
-    await this._cleanupOtp(userId, email);
+    console.trace("OTP verified successfully. Proceeding with cleanup.");
+    // Clean up: remove OTP from Redis and delete the pending verification document.
+    await Promise.all([
+      this.redis.del(`otp:email:${email}`),
+      this.firestore.collection('pending_verifications').doc(userId).delete()
+    ]);
+    console.trace("Cleanup completed, exiting verifyEmailOtp with success.");
     return true;
+  } catch (err) {
+    console.error("Error during verifyEmailOtp:", err);
+    throw err;
   }
+}
 
   /**
    * Cleans up OTP data stored in Redis and the pending verification record in Firestore.
@@ -358,84 +374,94 @@ export class AuthController {
     }
   }
 
-  /**
-   * Verifies the OTP and the user's password.
-   * On success, creates a Firebase user record, stores their profile,
-   * and generates JWT tokens.
-   *
-   * @param {string} userId - The temporary user ID.
-   * @param {string} emailOtp - OTP sent via email.
-   * @param {string} plainPassword - The user's plaintext password (re-entered).
-   * @param {string} ip - Caller IP address for rate limiting and audit logging.
-   * @returns {Promise<Object>} An object containing tokens and the new user ID.
-   */
-  async verifyRegistration(userId, emailOtp, plainPassword, ip) {
-    try {
-      // Rate limiting check.
-      await this._checkRateLimit(ip);
+/**
+ * Verifies the OTP and the user's password.
+ * On success, creates a Firebase user record, stores their profile,
+ * and generates JWT tokens.
+ *
+ * @param {string} userId - The temporary user ID.
+ * @param {string} emailOtp - OTP sent via email.
+ * @param {string} plainPassword - The user's plaintext password (re-entered).
+ * @param {string} ip - Caller IP address for rate limiting and audit logging.
+ * @returns {Promise<Object>} An object containing tokens and the new user ID.
+ */
+async verifyRegistration(userId, emailOtp, plainPassword, ip) {
+  try {
+    console.trace("Entering verifyRegistration");
 
-      // Verify the email OTP.
-      const emailVerified = await this.otpService.verifyEmailOtp(userId, emailOtp);
-      if (!emailVerified) {
-        console.warn(`Email OTP verification failed for user ${userId} from IP ${ip}`);
-        throw new Error('Invalid email OTP');
-      }
+    // Rate limiting check.
+    await this._checkRateLimit(ip);
+    console.trace("Passed rate limit check");
 
-      // Retrieve the temporary user record from Firestore.
-      const userDoc = await this.firestore.collection('temp_users').doc(userId).get();
-      if (!userDoc.exists) {
-        console.warn(`Temporary user record not found for userId ${userId} from IP ${ip}`);
-        throw new Error('Invalid verification session');
-      }
-      const tempUserData = userDoc.data();
+    // Verify the email OTP.
+    const emailVerified = await this.otpService.verifyEmailOtp(userId, emailOtp);
+    console.trace("OTP verification result:", emailVerified);
 
-      // Verify the re-entered password against the stored hashed password.
-      const isPasswordValid = await bcrypt.compare(plainPassword, tempUserData.password);
-      if (!isPasswordValid) {
-        console.warn(`Password verification failed for user ${userId} from IP ${ip}`);
-        throw new Error('Invalid password');
-      }
-
-      // Create the Firebase user using the plaintext password.
-      // Firebase will internally hash the password.
-      const userRecord = await admin.auth().createUser({
-        email: tempUserData.email,
-        phoneNumber: tempUserData.phone, // Optional since SMS OTP is removed.
-        password: plainPassword,
-        displayName: `${tempUserData.first_name || ''} ${tempUserData.last_name || ''}`.trim(),
-        emailVerified: true
-      });
-
-      // Now that the password has been used, clear the sensitive plaintext.
-      plainPassword = null;
-
-      // Store the user's profile in Firestore (permanent user record).
-      await this.firestore.collection('users').doc(userRecord.uid).set({
-        ...tempUserData,
-        uid: userRecord.uid,
-        status: 'active',
-        created_at: FieldValue.serverTimestamp()
-      });
-
-      // Clean up the temporary user record.
-      await this.firestore.collection('temp_users').doc(userId).delete();
-
-      // Generate JWT tokens for the newly created user.
-      const tokens = await this._generateTokens(userRecord);
-
-      console.info(`User ${userRecord.uid} verified and created successfully from IP ${ip}`);
-      console.log(`Audit: Successful registration for user ${userRecord.uid} (email: ${tempUserData.email}, IP: ${ip}).`);
-
-      return {
-        success: true,
-        userId: userRecord.uid,
-        ...tokens
-      };
-    } catch (error) {
-      console.error(`Verification failed for user ${userId} from IP ${ip}: ${error.message}`);
-      throw new Error('Verification failed. Please try again.');
+    if (!emailVerified) {
+      console.warn(`Email OTP verification failed for user ${userId} from IP ${ip}`);
+      throw new Error('Invalid email OTP');
     }
+
+    // Retrieve the temporary user record from Firestore.
+    const userDoc = await this.firestore.collection('temp_users').doc(userId).get();
+    console.trace("Fetched temp user document:", userDoc.exists);
+
+    if (!userDoc.exists) {
+      console.warn(`Temporary user record not found for userId ${userId} from IP ${ip}`);
+      throw new Error('Invalid verification session');
+    }
+    const tempUserData = userDoc.data();
+
+    // Verify the re-entered password against the stored hashed password.
+    const isPasswordValid = await bcrypt.compare(plainPassword, tempUserData.password);
+    console.trace("Password verification result:", isPasswordValid);
+
+    if (!isPasswordValid) {
+      console.warn(`Password verification failed for user ${userId} from IP ${ip}`);
+      throw new Error('Invalid password');
+    }
+
+    // Create the Firebase user using the plaintext password.
+    const userRecord = await admin.auth().createUser({
+      email: tempUserData.email,
+      phoneNumber: tempUserData.phone, // Optional since SMS OTP is removed.
+      password: plainPassword,
+      displayName: `${tempUserData.first_name || ''} ${tempUserData.last_name || ''}`.trim(),
+      emailVerified: true
+    });
+    console.trace("Firebase user created:", userRecord.uid);
+
+    // Store the user's profile in Firestore (permanent user record).
+    await this.firestore.collection('users').doc(userRecord.uid).set({
+      ...tempUserData,
+      uid: userRecord.uid,
+      status: 'active',
+      created_at: admin.firestore.FieldValue.serverTimestamp()
+    });
+    console.trace("User profile stored in Firestore");
+
+    // Clean up the temporary user record.
+    await this.firestore.collection('temp_users').doc(userId).delete();
+    console.trace("Temporary user record deleted");
+
+    // Generate JWT tokens for the newly created user.
+    const tokens = await this._generateTokens(userRecord);
+    console.trace("JWT tokens generated");
+
+    console.info(`User ${userRecord.uid} verified and created successfully from IP ${ip}`);
+    console.log(`Audit: Successful registration for user ${userRecord.uid} (email: ${tempUserData.email}, IP: ${ip}).`);
+
+    return {
+      success: true,
+      userId: userRecord.uid,
+      ...tokens
+    };
+  } catch (error) {
+    console.error(`Verification failed for user ${userId} from IP ${ip}: ${error.message}`);
+    throw new Error('Verification failed. Please try again.');
   }
+}
+
 
   /**
    * Generates JWT access and refresh tokens for an authenticated user.

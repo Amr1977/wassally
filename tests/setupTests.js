@@ -16,3 +16,12 @@ admin.initializeApp({
 });
 
 console.log("Firebase Admin SDK initialized successfully.");
+
+jest.spyOn(admin, 'auth').mockImplementation(() => ({
+  createUser: jest.fn().mockResolvedValue({
+    uid: "dummyUid",
+    email: "test@example.com",
+    phoneNumber: null,
+  }),
+  getUserByEmail: jest.fn().mockRejectedValue({ code: "auth/user-not-found" }),
+}));
