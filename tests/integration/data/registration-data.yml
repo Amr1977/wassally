@@ -1,0 +1,28 @@
+# tests/integration/data/registration-data.yml
+cases:
+  - description: "Valid registration data"
+    user:
+      email: "valid.user@example.com"
+      password: "StrongPass123!"
+      first_name: "Valid"
+      last_name: "User"
+    expected:
+      success: true
+      nextStep: "verify_otp"
+  - description: "Missing email"
+    user:
+      password: "StrongPass123!"
+      first_name: "NoEmail"
+      last_name: "User"
+    expected:
+      success: false
+      error: "Email is required"
+  - description: "Weak password"
+    user:
+      email: "weakpass@example.com"
+      password: "123"
+      first_name: "Weak"
+      last_name: "Password"
+    expected:
+      success: false
+      error: "Password must be at least 8 characters long"
