@@ -1,0 +1,49 @@
+# tests/integration/data/e2e-auth-data.yml
+cases:
+  - description: "Successful full authentication flow"
+    user:
+      email: "e2e.user1@example.com"
+      password: "SecurePass123!"
+      first_name: "E2E"
+      last_name: "Tester"
+    expectedOtp: "123456"  # Replace if your staging environment changes the generated OTP.
+    expected:
+      registration:
+        success: true
+        nextStep: "verify_otp"
+      verification:
+        success: true
+        # Placeholders for values that are generated
+        generatedUserId: "PLACEHOLDER_GENERATED_UID"
+        accessToken: "PLACEHOLDER_ACCESS_TOKEN"
+        refreshToken: "PLACEHOLDER_REFRESH_TOKEN"
+      login:
+        success: true
+        accessToken: "PLACEHOLDER_LOGIN_ACCESS_TOKEN"
+        refreshToken: "PLACEHOLDER_LOGIN_REFRESH_TOKEN"
+      logout:
+        success: true
+
+  - description: "Registration failure due to missing email"
+    user:
+      email: ""  # Missing email.
+      password: "SecurePass123!"
+      first_name: "E2E"
+      last_name: "Tester"
+    expectedOtp: "PLACEHOLDER_OTP"
+    expected:
+      registration:
+        success: false
+        error: "Email is required"
+
+  - description: "Registration failure due to weak password"
+    user:
+      email: "e2e.user2@example.com"
+      password: "weak"  # Too short.
+      first_name: "E2E"
+      last_name: "Tester"
+    expectedOtp: "PLACEHOLDER_OTP"
+    expected:
+      registration:
+        success: false
+        error: "Password must be at least 8 characters long"
