@@ -27,6 +27,7 @@
     "firebase": "^11.8.1",
     "firebase-admin": "^13.4.0",
     "ioredis": "^5.6.1",
+    "jest-html-reporter": "^4.1.0",
     "joi": "^17.13.3",
     "node-fetch": "^3.3.2",
     "nodemailer": "^7.0.3",
@@ -40,15 +41,11 @@
       "<rootDir>/jest.setup.js"
     ],
     "reporters": [
-      "default",
-      [
-        "jest-junit",
-        {
-          "outputDirectory": "./reports",
-          "outputName": "junit.xml",
-          "suiteName": "Badr Delivery Platform Tests"
-        }
-      ]
-    ]
+       "default",
+       ["jest-html-reporter", {
+         "pageTitle": "Test Results",
+         "outputPath": "./test-report.html"
+       }]
+     ]
   }
 }

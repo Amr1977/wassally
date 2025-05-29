@@ -9,6 +9,7 @@ cases:
     expected:
       success: true
       nextStep: "verify_otp"
+      loginRole: "customer"   # Optional field
   - description: "Missing email"
     user:
       password: "StrongPass123!"

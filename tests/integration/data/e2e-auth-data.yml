@@ -6,19 +6,19 @@ cases:
       password: "SecurePass123!"
       first_name: "E2E"
       last_name: "Tester"
-    expectedOtp: "123456"  # Replace if your staging environment changes the generated OTP.
+    expectedOtp: "123456"  # Replace if needed.
     expected:
       registration:
         success: true
         nextStep: "verify_otp"
       verification:
         success: true
-        # Placeholders for values that are generated
         generatedUserId: "PLACEHOLDER_GENERATED_UID"
         accessToken: "PLACEHOLDER_ACCESS_TOKEN"
         refreshToken: "PLACEHOLDER_REFRESH_TOKEN"
       login:
         success: true
+        loginRole: "customer"  # New field indicating the required login role.
         accessToken: "PLACEHOLDER_LOGIN_ACCESS_TOKEN"
         refreshToken: "PLACEHOLDER_LOGIN_REFRESH_TOKEN"
       logout:

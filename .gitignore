@@ -73,3 +73,6 @@ files.txt
 
 # express server 
 functions/.env
+test-report.html
+functions
+functions/

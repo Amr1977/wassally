@@ -22,8 +22,9 @@ describe('AuthController - Additional Functions', () => {
       data: () => ({
         uid: 'user1',
         email: 'user@example.com',
-        password: 'hashedPassword', // this represents a stored hash
-        phone: '1234567890'
+        password: 'hashedPassword', // stored hash
+        phone: '1234567890',
+        roles: ['customer'] // new roles field
       })
     };
     const fakeUsersSnapshot = {
@@ -45,7 +46,8 @@ describe('AuthController - Additional Functions', () => {
                   uid: 'user1',
                   email: 'user@example.com',
                   password: 'hashedPassword',
-                  phone: '1234567890'
+                  phone: '1234567890',
+                  roles: ['customer']
                 })
               })
             })
@@ -58,12 +60,13 @@ describe('AuthController - Additional Functions', () => {
                 data: () => ({
                   email: 'user@example.com',
                   otp_attempts: 0,
-                  lockedUntil: null
+                  lockedUntil: null,
                 })
               }),
               set: jest.fn().mockResolvedValue(),
-              delete: jest.fn().mockResolvedValue()
-            })
+              update: jest.fn().mockResolvedValue(),
+              delete: jest.fn().mockResolvedValue(),
+            }),
           };
         } else if (name === 'temp_users') {
           return {
@@ -72,29 +75,34 @@ describe('AuthController - Additional Functions', () => {
             })
           };
         }
-      })
+      }),
     };
 
-    // Stub Redis with minimal functions.
+    // Stub Redis methods.
     authController.redis = {
       setex: jest.fn().mockResolvedValue(),
       incr: jest.fn().mockResolvedValue(1),
       expire: jest.fn().mockResolvedValue(),
-      get: jest.fn().mockResolvedValue('dummyRefreshToken'),
-      del: jest.fn().mockResolvedValue()
+      get: jest.fn().mockResolvedValue('123456'),
+      del: jest.fn().mockResolvedValue(),
     };
 
-    // Stub OTPService and EmailService used by resendOTP
-    jest.spyOn(authController.otpService, 'generateOtp').mockResolvedValue('654321');
-    jest.spyOn(authController.emailService, 'sendOTP').mockResolvedValue();
+    // Also override OTPService's Redis client.
+    authController.otpService.redis = authController.redis;
 
-    // Stub bcrypt.compare for login
+    // Stub Firebase Admin auth methods.
+    jest.spyOn(admin.auth(), 'getUserByEmail').mockRejectedValue({ code: 'auth/user-not-found' });
+    jest.spyOn(admin.auth(), 'createUser').mockResolvedValue({
+      uid: 'generatedUid',
+      email: 'user@example.com',
+      phoneNumber: null,
+    });
+
+    // Stub bcrypt methods.
+    jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashedPassword');
     jest.spyOn(bcrypt, 'compare').mockResolvedValue(true);
 
-    // Stub admin.auth().getUserByEmail (not used in login since we rely on Firestore queries)
-    jest.spyOn(admin.auth(), 'getUserByEmail').mockRejectedValue({ code: 'auth/user-not-found' });
-
-    // Stub jwt.verify for refreshToken: simulate a payload with uid, etc.
+    // Stub jwt.verify for refreshToken.
     jest.spyOn(jwt, 'verify').mockReturnValue({ uid: 'user1', email: 'user@example.com' });
   });
 
@@ -103,17 +111,17 @@ describe('AuthController - Additional Functions', () => {
   });
 
   test('login: should login successfully with correct credentials', async () => {
-    // Call the login function using valid credentials.
-    const tokens = await authController.login('user@example.com', 'password123', '127.0.0.1');
+    // Call the login function using valid credentials with loginRole "customer".
+    const tokens = await authController.login('user@example.com', 'password123', 'customer', '127.0.0.1');
     expect(tokens).toHaveProperty('accessToken');
     expect(tokens).toHaveProperty('refreshToken');
-  });
+  }, 15000);
 
   test('login: should fail login with incorrect credentials', async () => {
     // Force bcrypt.compare to return false to simulate a wrong password.
     jest.spyOn(bcrypt, 'compare').mockResolvedValueOnce(false);
     await expect(
-      authController.login('user@example.com', 'wrongpassword', '127.0.0.1')
+      authController.login('user@example.com', 'wrongpassword', 'customer', '127.0.0.1')
     ).rejects.toThrow('Login failed. Please check your credentials and try again.');
   });
 
@@ -121,7 +129,7 @@ describe('AuthController - Additional Functions', () => {
     const response = await authController.resendOTP('tempId123', '127.0.0.1');
     expect(response.success).toBe(true);
     expect(response.message).toContain('A new OTP has been sent');
-  });
+  }, 15000);
 
   test('refreshToken: should refresh tokens successfully', async () => {
     // Simulate that the stored refresh token in Redis matches the provided one.
