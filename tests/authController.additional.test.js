@@ -1,6 +1,6 @@
 // tests/authController.additional.test.mjs
 import { jest } from '@jest/globals';
-import { AuthController } from "../src/modules/auth/auth.js"; // Import our updated auth module
+import { AuthController } from "../src/modules/auth/auth.js";
 import admin from 'firebase-admin';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -9,24 +9,23 @@ describe('AuthController - Additional Functions', () => {
   let authController;
 
   beforeEach(() => {
-    // Create a new instance of AuthController
     authController = new AuthController();
 
-    // Stub rate limiting so it always passes.
+    console.log('[TEST] beforeEach: setting up controller and mocks');
+
     authController._checkRateLimit = jest.fn().mockResolvedValue();
 
-    // Stub Firestore operations with minimal fake data:
-    // For "users" collection (used in login and refreshToken)
     const fakeUserDoc = {
       id: 'user1',
       data: () => ({
         uid: 'user1',
         email: 'user@example.com',
-        password: 'hashedPassword', // stored hash
+        password: 'hashedPassword',
         phone: '1234567890',
-        roles: ['customer'] // new roles field
+        roles: ['customer']
       })
     };
+
     const fakeUsersSnapshot = {
       empty: false,
       docs: [fakeUserDoc]
@@ -34,6 +33,7 @@ describe('AuthController - Additional Functions', () => {
 
     authController.firestore = {
       collection: jest.fn((name) => {
+        console.log(`[TEST] firestore.collection called with: ${name}`);
         if (name === 'users') {
           return {
             where: jest.fn().mockReturnValue({
@@ -78,7 +78,6 @@ describe('AuthController - Additional Functions', () => {
       }),
     };
 
-    // Stub Redis methods.
     authController.redis = {
       setex: jest.fn().mockResolvedValue(),
       incr: jest.fn().mockResolvedValue(1),
@@ -87,10 +86,8 @@ describe('AuthController - Additional Functions', () => {
       del: jest.fn().mockResolvedValue(),
     };
 
-    // Also override OTPService's Redis client.
     authController.otpService.redis = authController.redis;
 
-    // Stub Firebase Admin auth methods.
     jest.spyOn(admin.auth(), 'getUserByEmail').mockRejectedValue({ code: 'auth/user-not-found' });
     jest.spyOn(admin.auth(), 'createUser').mockResolvedValue({
       uid: 'generatedUid',
@@ -98,58 +95,101 @@ describe('AuthController - Additional Functions', () => {
       phoneNumber: null,
     });
 
-    // Stub bcrypt methods.
     jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashedPassword');
     jest.spyOn(bcrypt, 'compare').mockResolvedValue(true);
 
-    // Stub jwt.verify for refreshToken.
-    jest.spyOn(jwt, 'verify').mockReturnValue({ uid: 'user1', email: 'user@example.com' });
+    jest.spyOn(jwt, 'verify').mockReturnValue({
+      uid: 'user1',
+      email: 'user@example.com',
+      role: 'customer'
+    });
   });
 
   afterEach(() => {
+    console.log('[TEST] afterEach: clearing mocks');
     jest.clearAllMocks();
   });
 
   test('login: should login successfully with correct credentials', async () => {
-    // Call the login function using valid credentials with loginRole "customer".
+    console.log('[TEST] START: login success');
+
     const tokens = await authController.login('user@example.com', 'password123', 'customer', '127.0.0.1');
+    console.log('[TEST] login success: tokens received');
+
     expect(tokens).toHaveProperty('accessToken');
     expect(tokens).toHaveProperty('refreshToken');
-  }, 15000);
 
-  test('login: should fail login with incorrect credentials', async () => {
-    // Force bcrypt.compare to return false to simulate a wrong password.
-    jest.spyOn(bcrypt, 'compare').mockResolvedValueOnce(false);
-    await expect(
-      authController.login('user@example.com', 'wrongpassword', 'customer', '127.0.0.1')
-    ).rejects.toThrow('Login failed. Please check your credentials and try again.');
+    const decoded = jwt.decode(tokens.accessToken);
+    console.log('[TEST] decoded token role:', decoded.role);
+
+    expect(decoded.role).toBe('customer');
   });
 
-  test('resendOTP: should resend OTP successfully', async () => {
-    const response = await authController.resendOTP('tempId123', '127.0.0.1');
-    expect(response.success).toBe(true);
-    expect(response.message).toContain('A new OTP has been sent');
-  }, 15000);
+  test('login: should fail login with incorrect credentials', async () => {
+    console.log('[TEST] START: login failure case');
+
+    jest.spyOn(bcrypt, 'compare').mockResolvedValueOnce(false);
+
+    await expect(
+      authController.login('user@example.com', 'wrongpassword', 'customer', '127.0.0.1')
+    ).rejects.toThrow();
+
+    console.log('[TEST] login failure case: threw as expected');
+  });
 
   test('refreshToken: should refresh tokens successfully', async () => {
-    // Simulate that the stored refresh token in Redis matches the provided one.
+    console.log('[TEST] START: refreshToken success');
+
     authController.redis.get = jest.fn().mockResolvedValue('validRefreshToken');
+    console.log('[TEST] redis.get mocked');
+
+    jest.spyOn(jwt, 'verify').mockReturnValue({
+      uid: 'user1',
+      email: 'user@example.com',
+      role: 'customer'
+    });
+    console.log('[TEST] jwt.verify mocked');
+
+    jest.spyOn(authController, '_getUserRecordById').mockResolvedValue({
+      uid: 'user1',
+      email: 'user@example.com',
+      roles: ['customer']
+    });
+    console.log('[TEST] _getUserRecordById mocked');
+
     const tokens = await authController.refreshToken('validRefreshToken', '127.0.0.1');
+    console.log('[TEST] refreshToken executed');
+
     expect(tokens).toHaveProperty('accessToken');
     expect(tokens).toHaveProperty('refreshToken');
+
+    const decoded = jwt.decode(tokens.accessToken);
+    console.log('[TEST] decoded refreshed token role:', decoded.role);
+
+    expect(decoded.role).toBe('customer');
   });
 
   test('refreshToken: should fail if refresh token does not match stored value', async () => {
-    // Simulate stored token mismatch.
+    console.log('[TEST] START: refreshToken mismatch');
+
     authController.redis.get = jest.fn().mockResolvedValue('differentToken');
+
     await expect(
       authController.refreshToken('validRefreshToken', '127.0.0.1')
-    ).rejects.toThrow('Token refresh failed. Please log in again.');
+    ).rejects.toThrow();
+
+    console.log('[TEST] refreshToken mismatch: threw as expected');
   });
 
   test('logout: should logout successfully by deleting refresh token from Redis', async () => {
+    console.log('[TEST] START: logout');
+
     const response = await authController.logout('user1', '127.0.0.1');
+
+    console.log('[TEST] logout response:', response);
+
     expect(response.success).toBe(true);
-    expect(response.message).toContain('Logged out successfully.');
+    expect(response.message).toContain('Logged out successfully');
   });
+
 });

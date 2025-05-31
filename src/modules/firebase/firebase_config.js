@@ -17,6 +17,8 @@ const firebaseConfig = {
   measurementId: "G-W5Z57HVDCK"
 };
 
+//TODO: create production/staging/testing configs (add two more config constants and select based on conf file )
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);

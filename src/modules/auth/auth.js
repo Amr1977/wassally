@@ -7,10 +7,21 @@
     - Implemented exponential backoff (temporary lockout) for OTP verification.
     - Added extensive logging and audit trails for OTP attempts.
     - Enhanced input validation using Joi (a free validation library).
+  
+  TODO: gather configuration non-sensitive constants in a configuration file, with a mechanism to load at module startup/load
+  TODO: why not using Logger module logs, almost all logs are directed to console only, logger
 */
 
-/* ----------------------- Preliminary Security Checks & Imports ----------------------- */
+import logger from '../logger/logger.js';
+import nodemailer from 'nodemailer';
+import Redis from 'ioredis';
+import { Firestore, FieldValue } from '@google-cloud/firestore';
+import jwt from 'jsonwebtoken';
+import admin from 'firebase-admin';
+import bcrypt from 'bcryptjs';
+import Joi from 'joi'; // Robust, free input validation library
 
+// ----------------------- Preliminary Environment & Security Checks -----------------------
 (function checkEnvVariables() {
   // Required environment variables must exist for secure operation.
   const requiredEnv = [
@@ -22,10 +33,10 @@
   ];
   // Optional parameters have default values; warn if not set.
   const optionalEnv = [
-    'OTP_EXPIRY',
-    'JWT_ACCESS_EXPIRY',
-    'JWT_REFRESH_EXPIRY',
-    'REDIS_URL'
+    'OTP_EXPIRY', // TODO: explain usage and recommend value
+    'JWT_ACCESS_EXPIRY', // TODO: explain usage and recommend value
+    'JWT_REFRESH_EXPIRY', // TODO: explain usage and recommend value
+    'REDIS_URL' // TODO: explain usage and recommend value
   ];
   requiredEnv.forEach((envVar) => {
     if (!process.env[envVar]) {
@@ -34,26 +45,16 @@
   });
   optionalEnv.forEach((envVar) => {
     if (!process.env[envVar]) {
-      console.warn(`Optional environment variable "${envVar}" is not set. Using default value if applicable.`);
+      logger.warn(`Optional environment variable "${envVar}" is not set. Using default value if applicable.`);
     }
   });
 })();
-
-// ----------------------- Dependencies & Imports -----------------------
-
-import nodemailer from 'nodemailer';
-import Redis from 'ioredis';
-import { Firestore, FieldValue } from '@google-cloud/firestore';
-import jwt from 'jsonwebtoken';
-import admin from 'firebase-admin';
-import bcrypt from 'bcryptjs';
-import Joi from 'joi'; // Robust, free input validation library
 
 // ----------------------- Configuration Constants -----------------------
 
 const SALT_ROUNDS = 10; // Number of rounds for bcrypt hashing.
 
-const OTP_CONFIG = {
+const OTP_CONFIG = { // TODO: fetch values from environment variables or configuration files 
   EXPIRY_SECONDS: parseInt(process.env.OTP_EXPIRY) || 300, // OTP lifespan, default 5 minutes.
   MAX_ATTEMPTS: 3,     // Maximum allowed OTP verification attempts.
   OTP_LENGTH: 6        // Length of the OTP code.
@@ -72,10 +73,12 @@ const REDIS_CONFIG = {
   URL: process.env.REDIS_URL || 'redis://localhost:6379'
 };
 
+// TODO: use environment variables, advice a mechanism to load environment variables at once
 const LOCKOUT_BASE_DURATION = 60; // Base duration in seconds for exponential backoff.
 
 // ----------------------- Utility: Input Validation using Joi -----------------------
 
+// TODO: should we check for role validity
 function validateUserData(data) {
   const schema = Joi.object({
     email: Joi.string().email().required().messages({
@@ -86,6 +89,7 @@ function validateUserData(data) {
     phone: Joi.string().pattern(/^\+?\d{7,15}$/).optional().messages({
       'string.pattern.base': 'Phone must be a valid phone number with 7-15 digits.'
     }),
+    // TODO: use constant/environment variable for minimum password length
     password: Joi.string().min(8).required().messages({
       'string.min': 'Password must be at least 8 characters long.',
       'any.required': 'Password is required.'
@@ -100,6 +104,7 @@ function validateUserData(data) {
 
 // ----------------------- Email Service -----------------------
 
+// TODO: Should this be embedded in OTPService, like sendOTP, as it already has generate and verify ?
 export class EmailService {
   constructor() {
     this.transporter = nodemailer.createTransport({
@@ -119,9 +124,9 @@ export class EmailService {
         subject: 'Your OTP Code',
         html: `<p>Your verification code is: <strong>${otp}</strong></p>`
       });
-      console.info(`OTP email sent to ${email}`);
+      logger.info(`OTP email sent to ${email}`);
     } catch (error) {
-      console.error('Email sending failed', { error });
+      logger.error('Email sending failed', { error });
       throw new Error('Failed to send OTP. Please try again later.');
     }
   }
@@ -129,9 +134,14 @@ export class EmailService {
 
 // ----------------------- OTP Service -----------------------
 
+// TODO: why not just OTP ?
+// TODO: should this be in a separate module for global reusability ?
 export class OTPService {
   constructor() {
+    // TODO: Why creating its own instance, why not module level or singleton ?
     this.redis = new Redis(REDIS_CONFIG.URL);
+
+    // TODO: Why creating its own firestore instance ? why not shared instance/singleton ?
     this.firestore = new Firestore();
   }
 
@@ -144,18 +154,18 @@ export class OTPService {
       otp_attempts: 0,
       lockedUntil: null
     });
-    console.info(`Generated OTP for user ${userId} and email ${email}`);
-    console.log(`Audit: OTP generated for user (${userId}, email: ${email}).`);
+    logger.info(`Generated OTP for user ${userId} and email ${email}`);
+    logger.info(`Audit: OTP generated for user (${userId}, email: ${email}).`);
     return otp;
   }
 
   async verifyEmailOtp(userId, otp) {
     try {
-      console.trace("Entering verifyEmailOtp");
+      logger.debug("Entering verifyEmailOtp");
       const pendingDoc = await this.firestore.collection('pending_verifications').doc(userId).get();
-      console.trace("Fetched pending_verifications doc", pendingDoc.exists);
+      logger.debug("Fetched pending_verifications doc", { exists: pendingDoc.exists });
       if (!pendingDoc.exists) {
-        console.warn(`Pending verification record not found for user ${userId}`);
+        logger.warn(`Pending verification record not found for user ${userId}`);
         return false;
       }
       const data = pendingDoc.data();
@@ -164,35 +174,35 @@ export class OTPService {
       let lockedUntil = data.lockedUntil;
       const now = Date.now();
       if (lockedUntil && now < lockedUntil) {
-        console.warn(`OTP verification blocked for ${email} until ${new Date(lockedUntil).toISOString()}`);
+        logger.warn(`OTP verification blocked for ${email} until ${new Date(lockedUntil).toISOString()}`);
         return false;
       }
-      console.trace(`Before calling redis.get() for key otp:email:${email}`);
+      logger.debug(`Before calling redis.get() for key otp:email:${email}`);
       const storedOtp = await this.redis.get(`otp:email:${email}`);
-      console.trace(`Redis returned OTP: ${storedOtp}`);
+      logger.debug(`Redis returned OTP: ${storedOtp}`);
       if (storedOtp !== otp) {
         attempts += 1;
         if (attempts >= OTP_CONFIG.MAX_ATTEMPTS) {
           const lockoutSeconds = LOCKOUT_BASE_DURATION * Math.pow(2, attempts - OTP_CONFIG.MAX_ATTEMPTS);
           lockedUntil = now + lockoutSeconds * 1000;
-          console.warn(`Exceeded max attempts for ${email}. Locking out until ${new Date(lockedUntil).toISOString()}`);
+          logger.warn(`Exceeded max attempts for ${email}. Locking out until ${new Date(lockedUntil).toISOString()}`);
         }
-        console.trace("Updating OTP attempts:", attempts, "lockedUntil:", lockedUntil);
+        logger.debug("Updating OTP attempts", { attempts, lockedUntil });
         await this.firestore.collection('pending_verifications').doc(userId).update({
           otp_attempts: attempts,
           lockedUntil
         });
         return false;
       }
-      console.trace("OTP verified successfully. Cleaning up.");
+      logger.debug("OTP verified successfully. Cleaning up.");
       await Promise.all([
         this.redis.del(`otp:email:${email}`),
         this.firestore.collection('pending_verifications').doc(userId).delete()
       ]);
-      console.trace("Cleanup completed, exiting verifyEmailOtp with success.");
+      logger.debug("Cleanup completed, exiting verifyEmailOtp with success.");
       return true;
     } catch (err) {
-      console.error("Error during verifyEmailOtp:", err);
+      logger.error("Error during verifyEmailOtp", { error: err });
       throw err;
     }
   }
@@ -202,16 +212,17 @@ export class OTPService {
       this.redis.del(`otp:email:${email}`),
       this.firestore.collection('pending_verifications').doc(userId).delete()
     ]);
-    console.info(`Cleaned up OTP data for user ${userId} and email ${email}`);
+    logger.info(`Cleaned up OTP data for user ${userId} and email ${email}`);
   }
 
+  // TODO: use more descriptive name and refactor where needed
   _generateCode() {
     return Math.floor(
       Math.pow(10, OTP_CONFIG.OTP_LENGTH - 1) +
       Math.random() * 9 * Math.pow(10, OTP_CONFIG.OTP_LENGTH - 1)
     ).toString();
   }
-}/* ----------------------- Auth Controller ----------------------- */
+}// ----------------------- Auth Controller & Further Operations -----------------------
 
 export class AuthController {
   constructor() {
@@ -220,25 +231,29 @@ export class AuthController {
     this.redis = new Redis(REDIS_CONFIG.URL); // For storing JWT refresh tokens & rate limiting.
     this.firestore = new Firestore();
   }
-  
+
+  // TODO: is this method private ? I think we will need it in all APIs so advice a better scope to use it globally
   async _checkRateLimit(ip) {
-    const RATE_LIMIT = 100; // Maximum requests per minute per IP.
-    const RATE_LIMIT_WINDOW = 60; // In seconds.
+    // TODO: use configuration constants/environment variables to obtain these configuration constants
     const key = `rate:${ip}`;
     const requests = await this.redis.incr(key);
+    const RATE_LIMIT_WINDOW = 60; // In seconds.
+    const RATE_LIMIT = 100; // Maximum requests per minute per IP.
     if (requests === 1) {
       await this.redis.expire(key, RATE_LIMIT_WINDOW);
     }
     if (requests > RATE_LIMIT) {
-      console.warn(`Rate limit exceeded for IP ${ip}. Request count: ${requests}.`);
+      logger.warn(`Rate limit exceeded for IP ${ip}. Request count: ${requests}.`);
       throw new Error('Too many requests. Please try again later.');
     }
   }
-  
-  // ----------------------- Registration & Verification -----------------------
 
+  // ----------------------- Registration & Verification -----------------------
+  // TODO: why not just call method register/signup ?
+  // TODO: what is included in userData, does it include roles array ?
   async initiateRegistration(userData, ip) {
     try {
+      // TODO: this way we are allowing an IP to try registering 100 per minute, i think this is vulnerability
       await this._checkRateLimit(ip);
       validateUserData(userData);
 
@@ -254,6 +269,8 @@ export class AuthController {
       userData.password = hashedPassword; // Replace plaintext with hashed password.
 
       const userRef = this.firestore.collection('temp_users').doc();
+
+      // TODO: do we need to add roles with default customer role here ?
       await userRef.set({
         ...userData,
         created_at: FieldValue.serverTimestamp(),
@@ -264,8 +281,8 @@ export class AuthController {
       const emailOtp = await this.otpService.generateOtp(userRef.id, userData.email);
       await this.emailService.sendOTP(userData.email, emailOtp);
 
-      console.info(`Registration initiated for email ${userData.email} from IP ${ip}`);
-      console.log(`Audit: Initiated registration for user ${userRef.id} (email: ${userData.email}, IP: ${ip}).`);
+      logger.info(`Registration initiated for email ${userData.email} from IP ${ip}`);
+      logger.info(`Audit: Initiated registration for user ${userRef.id} (email: ${userData.email}, IP: ${ip}).`);
 
       return {
         success: true,
@@ -274,34 +291,33 @@ export class AuthController {
         message: 'OTP sent to email'
       };
     } catch (error) {
-      console.error(`Registration failed for IP ${ip}: ${error.message}`);
+      logger.error(`Registration failed for IP ${ip}: ${error.message}`);
       throw new Error('Registration failed. Please try again.');
     }
   }
 
   async verifyRegistration(userId, emailOtp, plainPassword, ip) {
     try {
-      console.trace("Entering verifyRegistration");
+      logger.debug("Entering verifyRegistration");
       await this._checkRateLimit(ip);
       const emailVerified = await this.otpService.verifyEmailOtp(userId, emailOtp);
-      console.trace("OTP verification result:", emailVerified);
-
+      logger.debug("OTP verification result", { emailVerified });
       if (!emailVerified) {
-        console.warn(`Email OTP verification failed for user ${userId} from IP ${ip}`);
+        logger.warn(`Email OTP verification failed for user ${userId} from IP ${ip}`);
         throw new Error('Invalid email OTP');
       }
 
       const userDoc = await this.firestore.collection('temp_users').doc(userId).get();
-      console.trace("Fetched temp user document:", userDoc.exists);
+      logger.debug("Fetched temp user document", { exists: userDoc.exists });
       if (!userDoc.exists) {
-        console.warn(`Temporary user record not found for userId ${userId} from IP ${ip}`);
+        logger.warn(`Temporary user record not found for userId ${userId} from IP ${ip}`);
         throw new Error('Invalid verification session');
       }
       const tempUserData = userDoc.data();
       const isPasswordValid = await bcrypt.compare(plainPassword, tempUserData.password);
-      console.trace("Password verification result:", isPasswordValid);
+      logger.debug("Password verification result", { isPasswordValid });
       if (!isPasswordValid) {
-        console.warn(`Password verification failed for user ${userId} from IP ${ip}`);
+        logger.warn(`Password verification failed for user ${userId} from IP ${ip}`);
         throw new Error('Invalid password');
       }
 
@@ -312,24 +328,24 @@ export class AuthController {
         displayName: `${tempUserData.first_name || ''} ${tempUserData.last_name || ''}`.trim(),
         emailVerified: true
       });
-      console.trace("Firebase user created:", userRecord.uid);
-
+      logger.debug("Firebase user created", { uid: userRecord.uid });
       await this.firestore.collection('users').doc(userRecord.uid).set({
         ...tempUserData,
         uid: userRecord.uid,
         status: 'active',
         created_at: admin.firestore.FieldValue.serverTimestamp()
       });
-      console.trace("User profile stored in Firestore");
+      logger.debug("User profile stored in Firestore");
       await this.firestore.collection('temp_users').doc(userId).delete();
-      console.trace("Temporary user record deleted");
+      logger.debug("Temporary user record deleted");
 
       // Generate tokens with the default "customer" role.
+      // TODO: use a defined constant for default role
       const tokens = await this._generateTokens(userRecord, 'customer');
-      console.trace("JWT tokens generated");
+      logger.debug("JWT tokens generated");
 
-      console.info(`User ${userRecord.uid} verified and created successfully from IP ${ip}`);
-      console.log(`Audit: Successful registration for user ${userRecord.uid} (email: ${tempUserData.email}, IP: ${ip}).`);
+      logger.info(`User ${userRecord.uid} verified and created successfully from IP ${ip}`);
+      logger.info(`Audit: Successful registration for user ${userRecord.uid} (email: ${tempUserData.email}, IP: ${ip}).`);
 
       return {
         success: true,
@@ -337,18 +353,11 @@ export class AuthController {
         ...tokens
       };
     } catch (error) {
-      console.error(`Verification failed for user ${userId} from IP ${ip}: ${error.message}`);
+      logger.error(`Verification failed for user ${userId} from IP ${ip}: ${error.message}`);
       throw new Error('Verification failed. Please try again.');
     }
   }
 
-  // ----------------------- Updated Multi‑Role Login -----------------------
-
-  /**
-   * User Login:
-   * Verifies credentials and sends an OTP to the user's registered email.
-   * Accepts a loginRole and a method ("phone" by default) to distinguish between standard and emergency login.
-   */
   async login(identifier, plainPassword, loginRole, ip, method = 'phone') {
     try {
       await this._checkRateLimit(ip);
@@ -360,25 +369,26 @@ export class AuthController {
       } else {
         throw new Error('Invalid login method specified.');
       }
-      
+
       const usersSnapshot = await this.firestore.collection('users')
         .where(queryField, '==', identifier)
         .get();
-      
+
       if (usersSnapshot.empty) {
-        console.warn(`Login failed: No user found with ${queryField} ${identifier}`);
+        logger.warn(`Login failed: No user found with ${queryField} ${identifier}`);
         throw new Error('Invalid credentials');
       }
-      
+
       const userDoc = usersSnapshot.docs[0];
       const userData = userDoc.data();
       const isValidPassword = await bcrypt.compare(plainPassword, userData.password);
       if (!isValidPassword) {
-        console.warn(`Login failed: Incorrect password for ${queryField} ${identifier}`);
+        logger.warn(`Login failed: Incorrect password for ${queryField} ${identifier}`);
         throw new Error('Invalid credentials');
       }
-      
+
       // Handle role selection.
+      // TODO: handle userData.roles is null, assume default role is customer
       if (!loginRole) {
         if (userData.roles.length === 1) {
           loginRole = userData.roles[0];
@@ -388,12 +398,12 @@ export class AuthController {
       } else if (!userData.roles.includes(loginRole)) {
         throw new Error("Selected role is not assigned to this user.");
       }
-      
+
       // Generate and send OTP to the user's registered email.
       const otp = await this.otpService.generateOtp(userDoc.id, userData.email);
       await this.emailService.sendOTP(userData.email, otp);
-      
-      console.info(`OTP sent to registered email for user ${userData.uid} from IP ${ip}`);
+
+      logger.info(`OTP sent to registered email for user ${userData.uid} from IP ${ip}`);
       return {
         success: true,
         message: "OTP sent to registered email. Please verify OTP using verifyLoginOTP.",
@@ -402,15 +412,11 @@ export class AuthController {
         method
       };
     } catch (error) {
-      console.error(`Login error for identifier ${identifier} from IP ${ip}: ${error.message}`);
+      logger.error(`Login error for identifier ${identifier} from IP ${ip}: ${error.message}`);
       throw new Error('Login failed. Please check your credentials and try again.');
     }
   }
 
-  /**
-   * Verify Login OTP:
-   * Verifies the OTP provided by the user during login and issues JWT tokens embedding ONLY the selected role.
-   */
   async verifyLoginOTP(userId, otp, loginRole, ip) {
     try {
       await this._checkRateLimit(ip);
@@ -418,7 +424,7 @@ export class AuthController {
       if (!otpValid) {
         throw new Error("Invalid OTP.");
       }
-      
+
       const userDoc = await this.firestore.collection('users').doc(userId).get();
       if (!userDoc.exists) {
         throw new Error("User not found.");
@@ -427,16 +433,17 @@ export class AuthController {
       if (!userData.roles.includes(loginRole)) {
         throw new Error("User does not have the selected role.");
       }
-      
+
       // Generate tokens embedding only the selected role.
+      // TODO: I think token generation should be separated and handled by the calling method
       const tokens = await this._generateTokens(userData, loginRole);
-      console.info(`OTP verification successful for user ${userId} with role ${loginRole}`);
+      logger.info(`OTP verification successful for user ${userId} with role ${loginRole}`);
       return {
         success: true,
         ...tokens
       };
     } catch (error) {
-      console.error(`OTP verification failed for user ${userId} from IP ${ip}: ${error.message}`);
+      logger.error(`OTP verification failed for user ${userId} from IP ${ip}: ${error.message}`);
       throw new Error('OTP verification failed. Please try again.');
     }
   }
@@ -446,10 +453,13 @@ export class AuthController {
    * Now accepts an optional selectedRole parameter to embed only that role in the token payload.
    * Sensitive fields like email and phone are omitted.
    */
+  // TODO: I think we should refactor user data so that user record has a current role attribute so we don't keep passing selected role everywhere, it should be kept with user record/data/profile and accessed from there with a default value of customer
   async _generateTokens(userRecord, selectedRole) {
     const payload = {
       uid: userRecord.uid,
-      role: selectedRole ? selectedRole : (userRecord.roles || []),
+      // TODO: who said array should contain at least one element, it could be empty
+      // TODO: I think next line should be: role: selectedRole || 'customer',
+      role: selectedRole || (Array.isArray(userRecord.roles) ? userRecord.roles[0] : 'customer'),
       iss: JWT_CONFIG.ISSUER,
       aud: JWT_CONFIG.AUDIENCE
     };
@@ -461,34 +471,34 @@ export class AuthController {
       expiresIn: JWT_CONFIG.REFRESH_EXPIRY
     });
 
+    // TODO: use a configuration constant instead of magic numbers
     await this.redis.setex(`refresh:${userRecord.uid}`, 7 * 24 * 60 * 60, refreshToken);
 
     return {
       accessToken,
       refreshToken,
+      // TODO: what does this value mean, 15 minutes ??
       expiresIn: 15 * 60 // 15 minutes in seconds.
     };
   }
 
-  // ----------------------- Other Methods Remain Unchanged -----------------------
-
-  async resendOTP(userId, ip) { 
+  async resendOTP(userId, ip) {
     try {
       await this._checkRateLimit(ip);
       const pendingDoc = await this.firestore.collection('pending_verifications').doc(userId).get();
       if (!pendingDoc.exists) {
-        console.warn(`Resend OTP failed: No pending verification for user ${userId}`);
+        logger.warn(`Resend OTP failed: No pending verification for user ${userId}`);
         throw new Error('No pending OTP verification session found.');
       }
       const pendingData = pendingDoc.data();
       const email = pendingData.email;
       const otp = await this.otpService.generateOtp(userId, email);
       await this.emailService.sendOTP(email, otp);
-      console.info(`Resent OTP for user ${userId} to email ${email} from IP ${ip}`);
-      console.log(`Audit: Resent OTP to ${email} for user ${userId} (IP: ${ip}).`);
+      logger.info(`Resent OTP for user ${userId} to email ${email} from IP ${ip}`);
+      logger.info(`Audit: Resent OTP to ${email} for user ${userId} (IP: ${ip}).`);
       return { success: true, message: 'A new OTP has been sent to your email.' };
     } catch (error) {
-      console.error(`Resend OTP error for user ${userId} from IP ${ip}: ${error.message}`);
+      logger.error(`Resend OTP error for user ${userId} from IP ${ip}: ${error.message}`);
       throw new Error('Unable to resend OTP. Please try again later.');
     }
   }
@@ -499,21 +509,21 @@ export class AuthController {
       const payload = jwt.verify(oldRefreshToken, JWT_CONFIG.REFRESH_SECRET);
       const storedToken = await this.redis.get(`refresh:${payload.uid}`);
       if (storedToken !== oldRefreshToken) {
-        console.warn(`Refresh token mismatch for user ${payload.uid} from IP ${ip}`);
+        logger.warn(`Refresh token mismatch for user ${payload.uid} from IP ${ip}`);
         throw new Error('Invalid refresh token');
       }
       const userDoc = await this.firestore.collection('users').doc(payload.uid).get();
       if (!userDoc.exists) {
-        console.warn(`User record not found for UID ${payload.uid} during token refresh`);
+        logger.warn(`User record not found for UID ${payload.uid} during token refresh`);
         throw new Error('User not found');
       }
       const userData = userDoc.data();
       const tokens = await this._generateTokens(userData);
-      console.info(`Refresh token successful for user ${payload.uid} from IP ${ip}`);
-      console.log(`Audit: Token refresh for user ${payload.uid} (IP: ${ip}).`);
+      logger.info(`Refresh token successful for user ${payload.uid} from IP ${ip}`);
+      logger.info(`Audit: Token refresh for user ${payload.uid} (IP: ${ip}).`);
       return tokens;
     } catch (error) {
-      console.error(`Refresh token error from IP ${ip}: ${error.message}`);
+      logger.error(`Refresh token error from IP ${ip}: ${error.message}`);
       throw new Error('Token refresh failed. Please log in again.');
     }
   }
@@ -522,17 +532,15 @@ export class AuthController {
     try {
       await this._checkRateLimit(ip);
       await this.redis.del(`refresh:${uid}`);
-      console.info(`Logout successful for user ${uid} from IP ${ip}`);
-      console.log(`Audit: User ${uid} logged out (IP: ${ip}).`);
+      logger.info(`Logout successful for user ${uid} from IP ${ip}`);
+      logger.info(`Audit: User ${uid} logged out (IP: ${ip}).`);
       return { success: true, message: 'Logged out successfully.' };
     } catch (error) {
-      console.error(`Logout error for user ${uid} from IP ${ip}: ${error.message}`);
+      logger.error(`Logout error for user ${uid} from IP ${ip}: ${error.message}`);
       throw new Error('Logout failed. Please try again.');
     }
   }
 }
-
-/* ----------------------- Updated Blacklist Service with Persistence ----------------------- */
 
 export class BlacklistService {
   constructor() {
@@ -543,7 +551,7 @@ export class BlacklistService {
   async isIPBlacklisted(ip) {
     const isBlacklisted = await this.redis.sismember('blacklisted_ips', ip);
     if (isBlacklisted) {
-      console.warn(`Connection attempt from blacklisted IP: ${ip}`);
+      logger.warn(`Connection attempt from blacklisted IP: ${ip}`);
     }
     return isBlacklisted === 1;
   }
@@ -560,21 +568,21 @@ export class BlacklistService {
     const emailIPs = await this.redis.smembers(emailKey);
     if (emailIPs.length > 1) {
       await Promise.all(emailIPs.map(existingIp => this.redis.sadd('blacklisted_ips', existingIp)));
-      console.warn(`Email ${email} is associated with multiple IPs. Blacklisting IPs: ${emailIPs.join(', ')}`);
-      console.log(`Audit: Blacklisted IPs for email ${email}: ${emailIPs.join(', ')}`);
+      logger.warn(`Email ${email} is associated with multiple IPs. Blacklisting IPs: ${emailIPs.join(', ')}`);
+      logger.info(`Audit: Blacklisted IPs for email ${email}: ${emailIPs.join(', ')}`);
     }
 
     if (phone) {
       const phoneIPs = await this.redis.smembers(`blacklist:phone:${phone}`);
       if (phoneIPs.length > 1) {
         await Promise.all(phoneIPs.map(existingIp => this.redis.sadd('blacklisted_ips', existingIp)));
-        console.warn(`Phone ${phone} is associated with multiple IPs. Blacklisting IPs: ${phoneIPs.join(', ')}`);
-        console.log(`Audit: Blacklisted IPs for phone ${phone}: ${phoneIPs.join(', ')}`);
+        logger.warn(`Phone ${phone} is associated with multiple IPs. Blacklisting IPs: ${phoneIPs.join(', ')}`);
+        logger.info(`Audit: Blacklisted IPs for phone ${phone}: ${phoneIPs.join(', ')}`);
       }
     }
 
     await this.redis.sadd('blacklisted_ips', ip);
-    console.info(`User with email ${email} ${phone ? `(and phone ${phone})` : ''} from IP ${ip} added to runtime blacklist.`);
+    logger.info(`User with email ${email} ${phone ? `(and phone ${phone})` : ''} from IP ${ip} added to runtime blacklist.`);
 
     try {
       const docRef = this.firestore.collection('persistent_blacklists').doc(ip);
@@ -592,7 +600,7 @@ export class BlacklistService {
           phones: Array.from(updatedPhones),
           updated_at: FieldValue.serverTimestamp()
         });
-        console.info(`Updated persistent blacklist record for IP ${ip} in Firestore.`);
+        logger.info(`Updated persistent blacklist record for IP ${ip} in Firestore.`);
       } else {
         await docRef.set({
           ip,
@@ -600,10 +608,10 @@ export class BlacklistService {
           phones: phone ? [phone] : [],
           created_at: FieldValue.serverTimestamp()
         });
-        console.info(`Created persistent blacklist record for IP ${ip} in Firestore.`);
+        logger.info(`Created persistent blacklist record for IP ${ip} in Firestore.`);
       }
     } catch (err) {
-      console.error("Failed to persist blacklist to Firestore", err);
+      logger.error("Failed to persist blacklist to Firestore", { error: err });
     }
   }
 }
